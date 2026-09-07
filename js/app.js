@@ -75,12 +75,14 @@
     align: 'left', valign: 'bottom',
     textScale: 100, padding: 80, sharp: true,
     badge: '', logo: '', logoName: '', logoSize: 120, logoPos: 'br', logoPlate: true,
-    format: 'png', exportScale: '1'
+    format: 'png', exportScale: '1',
+    aiEndpoint: '', aiCode: ''
   };
 
   var state = Object.assign({}, DEFAULTS);
   var brandFonts = null;      // { heading, body } uit de laatst geladen stijlgids
   var brandData = null;       // volledige extractie t.b.v. het rapport
+  var brandSource = null;     // { text, name } van de geladen stijlgids (gaat mee naar de AI)
   var customFonts = { heading: null, body: null };   // { name, dataUrl, format }
   var lastMetaSig = '';       // voorkomt dat frontmatter je handmatige aanpassingen overschrijft
   var lastHtml = null;        // laatst geplaatste HTML — voorkomt onnodige DOM-vervanging
@@ -126,6 +128,9 @@
     dimPill: $('dimPill'), themePill: $('themePill'), statusLine: $('statusLine'),
     fitInfo: $('fitInfo'), toast: $('toast'),
     exportBtn: $('exportBtn'), copyBtn: $('copyBtn'),
+    aiBrief: $('aiBrief'), aiGenerate: $('aiGenerate'), aiImprove: $('aiImprove'), aiCheck: $('aiCheck'),
+    aiResults: $('aiResults'), aiNotes: $('aiNotes'), aiContext: $('aiContext'),
+    aiEndpoint: $('aiEndpoint'), aiCode: $('aiCode'), aiStatus: $('aiStatus'), aiDot: $('aiDot'), aiInfo: $('aiInfo'),
     envNotice: $('envNotice'), envNoticeTitle: $('envNoticeTitle'),
     envNoticeText: $('envNoticeText'), envNoticeClose: $('envNoticeClose')
   };
@@ -1122,6 +1127,8 @@
     }
 
     brandData = b;
+    brandSource = { text: String(text), name: filename };
+    DB.set('brand', brandSource).catch(noop);
 
     if (b.roles.accent)  state.accent = b.roles.accent;
     if (b.roles.ink)     state.inkColor = b.roles.ink;
@@ -1159,7 +1166,7 @@
     return li;
   }
 
-  function renderBrandReport(b, filename) {
+  function renderBrandReport(b, filename, quiet) {
     el.brandFile.textContent = filename;
     el.brandReport.hidden = false;
     el.brandReset.hidden = false;
@@ -1191,6 +1198,8 @@
     });
 
     el.brandInfo.textContent = 'Stijlgids: ' + filename + ' — ' + b.colors.length + ' kleuren';
+    updateAiContext();
+    if (quiet) return;
 
     // Eerlijke waarschuwing: een heel donker accent verdwijnt op donkere fotos
     if (b.roles.accent && BRAND.contrastRatio(b.roles.accent, '#000000') < 2.2) {
@@ -1211,11 +1220,289 @@
 
   function clearBrand() {
     brandData = null;
+    brandSource = null;
+    DB.del('brand').catch(noop);
     setBrandFonts(null);
     el.brandReport.hidden = true;
     el.brandReset.hidden = true;
     el.brandInfo.textContent = 'Geen stijlgids geladen';
+    updateAiContext();
     scheduleRender();
+  }
+
+  /* Stijlgids terugzetten na een herlaadbeurt: rapport en AI-context, zonder
+     de kleuren opnieuw toe te passen (die staan al in de bewaarde state). */
+  function restoreBrand() {
+    return DB.get('brand').then(function (rec) {
+      if (!rec || typeof rec.text !== 'string' || !rec.text.trim()) return;
+      brandSource = { text: rec.text, name: rec.name || 'stijlgids.md' };
+      brandData = BRAND.extract(rec.text);
+      renderBrandReport(brandData, brandSource.name, true);
+    }).catch(noop);
+  }
+
+  /* ===========================================================================
+     7b. AI-ASSISTENT
+     -----------------------------------------------------------------------
+     De browser praat met onze eigen backend (server/server.js), nooit direct
+     met de AI-leverancier: de API-key blijft op de server. De backend krijgt
+     de briefing, de huidige tekst, de stijlgids en de instellingen, en geeft
+     complete postvarianten terug die hier met één klik worden toegepast.
+     ========================================================================= */
+  var aiBusy = false;
+  var aiVariants = [];
+
+  /* Basis-URL van de API: ingesteld adres, of anders de site zelf */
+  function aiBase() {
+    var v = String(state.aiEndpoint || '').trim().replace(/\/+$/, '').replace(/\/api$/, '');
+    if (v) return v;
+    return IS_FILE ? '' : window.location.origin;
+  }
+
+  function aiHeaders() {
+    var h = { 'Content-Type': 'application/json' };
+    if (state.aiCode) h['X-Access-Code'] = state.aiCode;
+    return h;
+  }
+
+  function setAiStatus(kind, text) {
+    el.aiDot.className = 'ai-dot' + (kind ? ' is-' + kind : '');
+    setText(el.aiStatus, text);
+    setText(el.aiInfo, 'AI: ' + text);
+  }
+
+  function updateAiContext() {
+    if (brandSource) {
+      setText(el.aiContext, 'De AI leest je stijlgids "' + brandSource.name + '" mee: tone of voice, USP\'s en kleuren worden overgenomen.');
+    } else {
+      setText(el.aiContext, 'Tip: laad eerst je stijlgids (.md). De AI neemt dan tone of voice, USP\'s en kleuren over.');
+    }
+  }
+
+  /* Bereikbaarheid en configuratie van de server controleren */
+  function aiHealth(showToast) {
+    var base = aiBase();
+    if (!base) {
+      setAiStatus('bad', 'server-URL ontbreekt');
+      if (showToast) toast('Vul de URL van je Render-server in bij AI-instellingen.', 'warn');
+      return Promise.resolve(false);
+    }
+    setAiStatus('busy', 'verbinden…');
+    return Promise.resolve()
+      .then(function () { return fetch(base + '/api/health', { method: 'GET', headers: aiHeaders() }); })
+      .then(function (res) { if (!res.ok) throw new Error('HTTP ' + res.status); return res.json(); })
+      .then(function (info) {
+        if (!info.hasKey) {
+          setAiStatus('bad', 'server mist API-key');
+          if (showToast) toast('De server draait, maar heeft geen ANTHROPIC_API_KEY. Zet die in de omgevingsvariabelen op Render.', 'error', 8000);
+          return false;
+        }
+        if (info.needsCode && !state.aiCode) {
+          setAiStatus('bad', 'toegangscode nodig');
+          if (showToast) toast('Deze server vraagt een toegangscode. Vul hem in bij AI-instellingen.', 'warn');
+          return false;
+        }
+        setAiStatus('ok', 'verbonden' + (info.mock ? ' (testmodus)' : ''));
+        if (showToast) toast('AI-server bereikbaar' + (info.model ? ' — model ' + info.model : '') + '.', 'ok');
+        return true;
+      })
+      .catch(function () {
+        setAiStatus('bad', 'niet bereikbaar');
+        if (showToast) toast('De AI-server is niet bereikbaar op ' + base + '. Controleer de URL en of de service op Render draait.', 'error', 8000);
+        return false;
+      });
+  }
+
+  function aiPayload(mode) {
+    var f = fieldsFromContent(state.content);
+    return {
+      mode: mode,
+      brief: el.aiBrief.value,
+      content: { label: f.label, title: f.title, body: f.body, list: f.list, quote: f.quote },
+      styleguide: brandSource ? {
+        text: brandSource.text,
+        name: brandSource.name,
+        brand: brandData ? { colors: brandData.colors, roles: brandData.roles, fonts: brandData.fonts, name: brandData.name, handle: brandData.handle } : null
+      } : null,
+      settings: {
+        ratio: state.ratio, theme: state.theme, align: state.align, valign: state.valign,
+        accent: state.accent, textColor: state.textColor, badge: state.badge, hasImage: !!state.image
+      }
+    };
+  }
+
+  function setAiBusy(busy, label) {
+    aiBusy = busy;
+    el.aiGenerate.disabled = busy;
+    el.aiImprove.disabled = busy;
+    el.aiGenerate.querySelector('span').textContent = busy ? (label || 'Denken…') : 'Maak post';
+    if (busy) setAiStatus('busy', label || 'bezig…');
+  }
+
+  function aiRequest(mode) {
+    if (aiBusy) return;
+    var brief = el.aiBrief.value.trim();
+    var hasText = !!MD.splitFrontmatter(state.content).body.trim();
+
+    if (mode === 'generate' && !brief) {
+      toast('Schrijf eerst kort wat je wilt posten, bijvoorbeeld "40% korting op alle plaids, alleen dit weekend".', 'warn');
+      el.aiBrief.focus();
+      return;
+    }
+    if (mode === 'improve' && !hasText) {
+      toast('Er staat nog geen tekst om te verbeteren. Vul de velden in of laat eerst een post maken.', 'warn');
+      return;
+    }
+    var base = aiBase();
+    if (!base) {
+      toast('Vul de URL van je Render-server in bij AI-instellingen.', 'warn');
+      el.aiEndpoint.focus();
+      return;
+    }
+
+    setAiBusy(true, mode === 'improve' ? 'Verbeteren…' : 'Schrijven…');
+    el.aiResults.hidden = true;
+    el.aiNotes.hidden = true;
+
+    var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    var timer = controller ? setTimeout(function () { controller.abort(); }, 120000) : 0;
+
+    Promise.resolve()
+      .then(function () {
+        return fetch(base + '/api/suggest', {
+          method: 'POST',
+          headers: aiHeaders(),
+          body: JSON.stringify(aiPayload(mode)),
+          signal: controller ? controller.signal : undefined
+        });
+      })
+      .then(function (res) {
+        return res.json().catch(function () { return {}; }).then(function (data) {
+          if (!res.ok) throw Object.assign(new Error(data.error || ('HTTP ' + res.status)), { status: res.status });
+          return data;
+        });
+      })
+      .then(function (data) {
+        var variants = Array.isArray(data.variants) ? data.variants : [];
+        if (!variants.length) throw new Error('De AI gaf geen voorstellen terug. Probeer het opnieuw.');
+        renderAiResults(variants, data.notes);
+        setAiStatus('ok', 'verbonden');
+        if (variants.length === 1 && mode === 'improve') {
+          applyVariant(variants[0], 0);
+          toast('Tekst verbeterd — bekijk het resultaat in de preview.', 'ok');
+        } else {
+          toast(variants.length + ' voorstellen klaar — klik op "Gebruik" om er een toe te passen.', 'ok');
+        }
+      })
+      .catch(function (err) {
+        var msg = err && err.name === 'AbortError' ? 'De AI deed er te lang over (meer dan 2 minuten). Probeer het opnieuw.' : (err && err.message) || String(err);
+        if (err && err.status === 401) { setAiStatus('bad', 'toegangscode klopt niet'); }
+        else if (err && err.status === 429) { setAiStatus('ok', 'verbonden'); }
+        else if (!err || !err.status) { setAiStatus('bad', 'niet bereikbaar'); if (!/te lang/.test(msg)) msg = 'De AI-server is niet bereikbaar op ' + base + '. Controleer de URL bij AI-instellingen.'; }
+        else setAiStatus('bad', 'fout');
+        toast(msg, 'error', 9000);
+      })
+      .then(function () {
+        clearTimeout(timer);
+        setAiBusy(false);
+      });
+  }
+
+  function renderAiResults(variants, notes) {
+    aiVariants = variants;
+    el.aiResults.innerHTML = '';
+    variants.forEach(function (v, i) {
+      var card = document.createElement('div');
+      card.className = 'ai-card';
+
+      var head = document.createElement('div');
+      head.className = 'ai-card__head';
+      var name = document.createElement('span');
+      name.className = 'ai-card__name';
+      name.textContent = v.name || ('Variant ' + (i + 1));
+      head.appendChild(name);
+      if (v.style && v.style.theme) {
+        var th = document.createElement('span');
+        th.className = 'ai-card__theme';
+        th.textContent = '· sjabloon ' + v.style.theme;
+        head.appendChild(th);
+      }
+      card.appendChild(head);
+
+      var title = document.createElement('div');
+      title.className = 'ai-card__title';
+      title.textContent = [v.label, v.title].filter(Boolean).join('\n');
+      card.appendChild(title);
+
+      var bodyBits = [v.body, (v.list || []).map(function (l) { return '– ' + l; }).join('  '), v.quote ? '“' + v.quote + '”' : ''].filter(Boolean);
+      if (bodyBits.length) {
+        var body = document.createElement('div');
+        body.className = 'ai-card__body';
+        body.textContent = bodyBits.join('\n');
+        card.appendChild(body);
+      }
+      if (v.why) {
+        var why = document.createElement('div');
+        why.className = 'ai-card__why';
+        why.textContent = v.why;
+        card.appendChild(why);
+      }
+
+      var actions = document.createElement('div');
+      actions.className = 'ai-card__actions';
+      var use = document.createElement('button');
+      use.type = 'button';
+      use.className = 'btn btn--primary';
+      use.textContent = 'Gebruik';
+      use.addEventListener('click', function () { applyVariant(v, i); toast('Voorstel toegepast.', 'ok'); });
+      var textOnly = document.createElement('button');
+      textOnly.type = 'button';
+      textOnly.className = 'btn btn--ghost';
+      textOnly.textContent = 'Alleen tekst';
+      textOnly.title = 'Neem de tekst over, laat de vormgeving zoals ze is';
+      textOnly.addEventListener('click', function () { applyVariant(v, i, true); toast('Tekst overgenomen.', 'ok'); });
+      actions.appendChild(use);
+      actions.appendChild(textOnly);
+      card.appendChild(actions);
+
+      el.aiResults.appendChild(card);
+    });
+    el.aiResults.hidden = !variants.length;
+    el.aiNotes.textContent = notes ? 'AI: ' + notes : '';
+    el.aiNotes.hidden = !notes;
+  }
+
+  /* Een voorstel toepassen: tekst in de velden, en (optioneel) de vormgeving */
+  function applyVariant(v, index, textOnly) {
+    var f = fieldsFromContent(state.content);   // frontmatter en style-blokken blijven bewaard
+    var content = contentFromFields({
+      front: f.front, extra: f.extra,
+      label: String(v.label || ''),
+      title: String(v.title || ''),
+      body: String(v.body || ''),
+      list: Array.isArray(v.list) ? v.list.join('\n') : String(v.list || ''),
+      quote: String(v.quote || '')
+    });
+
+    if (!textOnly) {
+      var s = v.style || {};
+      var tmp;
+      if ((tmp = normTheme(s.theme))) state.theme = tmp;
+      if (['left', 'center', 'right'].indexOf(s.align) !== -1) state.align = s.align;
+      if (['top', 'middle', 'bottom'].indexOf(s.position) !== -1) state.valign = s.position;
+      if (typeof s.overlay === 'number' && !isNaN(s.overlay)) state.overlay = clamp(Math.round(s.overlay), 0, 90);
+      if (typeof s.textScale === 'number' && !isNaN(s.textScale)) state.textScale = clamp(Math.round(s.textScale), 70, 145);
+      if ((tmp = toHex(s.accent))) state.accent = tmp;
+      if ((tmp = toHex(s.textColor))) state.textColor = tmp;
+      if (v.badge && String(v.badge).trim()) state.badge = String(v.badge).trim().slice(0, 40);
+    }
+
+    // Tekst zonder lastMetaSig te resetten: de frontmatter is niet veranderd
+    setContent(content, false);
+
+    Array.prototype.forEach.call(el.aiResults.children, function (card, i) {
+      card.classList.toggle('is-applied', i === index);
+    });
   }
 
   /* ===========================================================================
@@ -1388,6 +1675,24 @@
     on(el.customHeadClear, 'click', function () { clearCustomFont('heading'); });
     on(el.customBodyClear, 'click', function () { clearCustomFont('body'); });
 
+    /* AI-assistent */
+    on(el.aiGenerate, 'click', function () { aiRequest('generate'); });
+    on(el.aiImprove, 'click', function () { aiRequest('improve'); });
+    on(el.aiCheck, 'click', function () { aiHealth(true); });
+    on(el.aiBrief, 'keydown', function (e) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); aiRequest('generate'); }
+    });
+    var aiSettingsTimer;
+    function aiSettingsChanged() {
+      state.aiEndpoint = el.aiEndpoint.value.trim();
+      state.aiCode = el.aiCode.value;
+      persistSoon();
+      clearTimeout(aiSettingsTimer);
+      aiSettingsTimer = setTimeout(function () { aiHealth(false); }, 600);
+    }
+    on(el.aiEndpoint, 'input', aiSettingsChanged);
+    on(el.aiCode, 'input', aiSettingsChanged);
+
     /* Logo */
     on($('logoUploadBtn'), 'click', function () { el.logoInput.click(); });
     on(el.logoInput, 'change', function () {
@@ -1399,8 +1704,9 @@
     on(el.exportBtn, 'click', function () { exportImage('download'); });
     on(el.copyBtn, 'click', function () { exportImage('clipboard'); });
     on($('resetBtn'), 'click', function () {
-      if (!window.confirm('Alle instellingen, tekst, foto en logo wissen? Eigen lettertypen blijven bewaard.')) return;
-      state = Object.assign({}, DEFAULTS);
+      if (!window.confirm('Alle instellingen, tekst, foto en logo wissen? Eigen lettertypen en AI-instellingen blijven bewaard.')) return;
+      var keepAi = { aiEndpoint: state.aiEndpoint, aiCode: state.aiCode };
+      state = Object.assign({}, DEFAULTS, keepAi);
       if (FONTS.custom) state.font = 'custom';
       clearBrand();
       clearImage();
@@ -1697,10 +2003,17 @@
     bindEvents();
     safeRender();
 
-    // Foto, logo en eigen fonts terugzetten na een herlaadbeurt
+    // Foto, logo, stijlgids en eigen fonts terugzetten na een herlaadbeurt
     restoreUploadedImage();
     restoreLogo();
+    restoreBrand();
     restoreCustomFonts();
+
+    // AI-assistent: instellingen tonen en de server stil controleren
+    setVal(el.aiEndpoint, state.aiEndpoint);
+    setVal(el.aiCode, state.aiCode);
+    updateAiContext();
+    if (aiBase()) aiHealth(false); else setAiStatus('', 'server-URL invullen');
 
     // Webfonts komen later binnen: dan opnieuw passend maken
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(scheduleRender);

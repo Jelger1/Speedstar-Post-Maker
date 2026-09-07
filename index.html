@@ -34,6 +34,7 @@
   <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3v6M12 15v6M3 12h6M15 12h6"/><path d="m6.5 6.5 3 3M14.5 14.5l3 3M17.5 6.5l-3 3M9.5 14.5l-3 3"/></symbol>
   <symbol id="i-warn" viewBox="0 0 24 24"><path d="M12 3 2 20h20L12 3Z"/><path d="M12 10v4M12 17.5v.5"/></symbol>
   <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+  <symbol id="i-ai" viewBox="0 0 24 24"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8L12 3Z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8L19 15Z"/></symbol>
 </svg>
 
 <div class="app">
@@ -258,6 +259,57 @@
           </div>
 
           <p class="hint">Geen stijlgids? Zet bovenin je tekst-<code>.md</code> een frontmatter-blok met <code>accent:</code>, <code>theme:</code>, <code>align:</code> enz. &mdash; zie README.</p>
+        </div>
+      </details>
+
+      <!-- ---------- 4b. AI-ASSISTENT ---------- -->
+      <details class="panel panel--ai" id="aiPanel" open>
+        <summary class="panel__head">
+          <svg class="ico" aria-hidden="true"><use href="#i-ai"/></svg>
+          <span class="panel__title">AI-assistent</span>
+          <span class="ai-dot" id="aiDot" title="Status van de AI-server"></span>
+          <svg class="ico chev" aria-hidden="true"><use href="#i-chevron"/></svg>
+        </summary>
+        <div class="panel__body">
+          <div class="field">
+            <label class="label" for="aiBrief">Wat wil je posten? <i class="label__opt">zo concreet als je wilt</i></label>
+            <textarea id="aiBrief" rows="3" spellcheck="true" placeholder="Bijv. 40% korting op alle plaids, alleen dit weekend&#10;Of: nog 6 dagen tot de opening van de winkel in Utrecht&#10;Of: sfeerpost over een zondagochtend op de bank"></textarea>
+            <p class="hint" id="aiContext">De AI leest je stijlgids mee zodra je die laadt: tone of voice, USP's en kleuren worden dan overgenomen.</p>
+          </div>
+
+          <div class="row">
+            <button class="btn btn--primary btn--ai" id="aiGenerate" type="button">
+              <svg class="ico" aria-hidden="true"><use href="#i-ai"/></svg>
+              <span>Maak post</span>
+            </button>
+            <button class="btn btn--ghost btn--sm" id="aiImprove" type="button" title="Herschrijf de huidige tekst scherper en on-brand">
+              <svg class="ico" aria-hidden="true"><use href="#i-spark"/></svg> Verbeter tekst
+            </button>
+          </div>
+
+          <!-- Voorstellen: klik om toe te passen -->
+          <div class="ai-results" id="aiResults" hidden></div>
+          <p class="hint" id="aiNotes" hidden></p>
+
+          <details class="subpanel">
+            <summary class="subpanel__head">AI-instellingen <span class="ai-status" id="aiStatus">niet gecontroleerd</span></summary>
+            <div class="subpanel__body">
+              <div class="field">
+                <label class="label" for="aiEndpoint">Server-URL <i class="label__opt">leeg = deze site</i></label>
+                <input type="text" id="aiEndpoint" placeholder="https://post-studio.onrender.com" autocomplete="off" spellcheck="false">
+              </div>
+              <div class="field">
+                <label class="label" for="aiCode">Toegangscode <i class="label__opt">zoals ingesteld op de server</i></label>
+                <input type="password" id="aiCode" placeholder="••••••" autocomplete="off">
+              </div>
+              <div class="row">
+                <button class="btn btn--ghost btn--sm" id="aiCheck" type="button">
+                  <svg class="ico" aria-hidden="true"><use href="#i-check"/></svg> Verbinding testen
+                </button>
+              </div>
+              <p class="hint">De API-key staat alleen op de server (Render). Zie de README voor het opzetten.</p>
+            </div>
+          </details>
         </div>
       </details>
 
@@ -533,6 +585,8 @@
       <span id="fitInfo">Schaal 100%</span>
       <span class="sep"></span>
       <span id="brandInfo">Geen stijlgids geladen</span>
+      <span class="sep"></span>
+      <span id="aiInfo">AI: niet verbonden</span>
     </footer>
   </main>
 </div>
