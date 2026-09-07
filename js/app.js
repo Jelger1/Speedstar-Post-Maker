@@ -3,10 +3,10 @@
    -----------------------------------------------------------------------------
    Opbouw:
      1. Constanten & standaardwaarden      6. Eigen lettertypen
-     2. DOM-referenties & hulpjes          7. Events
-     3. Renderpijplijn                     8. Export
-     4. Markdown-frontmatter -> state      9. Opslag & start
-     5. Tekstvelden <-> markdown
+     2. DOM-referenties & hulpjes          7. Foto, logo & stijlgids
+     3. Renderpijplijn                     8. Events
+     4. Markdown-frontmatter -> state      9. Export
+     5. Tekstvelden <-> markdown          10. Opslag & start
    ============================================================================= */
 (function () {
   'use strict';
@@ -25,12 +25,12 @@
 
   var THEMES = ['minimal', 'editorial', 'panel', 'bold', 'band', 'quote'];
 
-  /* Draait de pagina rechtstreeks vanaf schijf? Dan blokkeert de browser
-     fetch(), @font-face en CORS-afbeeldingen — daar houden we rekening mee. */
+  /* Draait de pagina rechtstreeks vanaf schijf? Alles wat je zelf uploadt werkt
+     dan gewoon; alleen bestanden die via een pad worden opgehaald niet. */
   var IS_FILE = window.location.protocol === 'file:';
   var SERVER_HINT = 'Start de tool via een lokale server (VS Code "Live Server" of "npx serve .").';
   var SERVER_HINT_HTML = 'Start de tool via een lokale server: VS Code <b>Live Server</b> of <code>npx serve .</code>';
-  var DEFAULT_STATUS = 'Vul de velden in en sleep een foto — alles ververst direct.';
+  var DEFAULT_STATUS = 'Upload een foto en vul de velden in — alles ververst direct.';
 
   /* Smalle schermen: sidebar onder de preview; de stage-hoogte volgt dan de
      inhoud, dus de canvasmaat moet uit de viewport komen (anders krimpt hij
@@ -42,100 +42,39 @@
   var MAX_IMAGE_EDGE = 4096;
   var MAX_UPLOAD_BYTES = 40 * 1048576;
   var MAX_FONT_BYTES = 8 * 1048576;
-
-  var BRAND_FONT_H = "'Built Titling', 'Bebas Neue', Impact, sans-serif";
-  var BRAND_FONT_B = "'Circular Std', 'Inter', system-ui, sans-serif";
-  var BRAND_LABEL  = 'Merkstijl — Built Titling + Circular Std';
+  var MAX_LOGO_BYTES = 6 * 1048576;
 
   /* Interne familienamen voor geüploade lettertypen */
   var CUSTOM_FAMILY = { heading: 'IPM Custom Heading', body: 'IPM Custom Body' };
+  var UI_SANS = "'Inter', system-ui, sans-serif";
 
-  /* Lettertypecombinaties. 'brand' wordt overschreven zodra een stijlgids
-     eigen fonts aandraagt; 'custom' verschijnt zodra er een font is geüpload. */
+  /* Lettertypecombinaties (webfonts). 'brand' verschijnt zodra een stijlgids
+     fonts noemt; 'custom' zodra je zelf een fontbestand uploadt. */
   var FONTS = {
-    brand:    { label: BRAND_LABEL, h: BRAND_FONT_H, b: BRAND_FONT_B },
-    playfair: { label: 'Playfair Display — redactioneel',
-                h: "'Playfair Display', Georgia, serif",
-                b: "'Inter', system-ui, sans-serif" },
     inter:    { label: 'Inter — modern & neutraal',
-                h: "'Inter', system-ui, sans-serif",
-                b: "'Inter', system-ui, sans-serif" },
+                h: UI_SANS, b: UI_SANS },
+    playfair: { label: 'Playfair Display — redactioneel',
+                h: "'Playfair Display', Georgia, serif", b: UI_SANS },
     grotesk:  { label: 'Space Grotesk — technisch',
-                h: "'Space Grotesk', 'Inter', sans-serif",
-                b: "'Inter', system-ui, sans-serif" },
+                h: "'Space Grotesk', 'Inter', sans-serif", b: UI_SANS },
     bebas:    { label: 'Bebas Neue — impact',
-                h: "'Bebas Neue', Impact, sans-serif",
-                b: "'Inter', system-ui, sans-serif" }
+                h: "'Bebas Neue', Impact, sans-serif", b: UI_SANS }
   };
-
-  /* Meegeleverde beelden en logo's uit /assets */
-  var PHOTOS = [
-    { src: 'assets/Hero-section-foto.jpg', label: 'Hero' },
-    { src: 'assets/Duurzame-kwaliteit-foto-bedsprei.jpg', label: 'Bedsprei' },
-    { src: 'assets/6d6fe89d8b204a8b365de5bc8325.webp', label: 'Sfeer' }
-  ];
-  var LOGOS = [
-    { src: '', label: 'Geen' },
-    { src: 'assets/logo-dekentje-met-tekst.svg', label: 'Dekentje' },
-    { src: 'assets/logo-dekentje-zonder-tekst.svg', label: 'Beeldmerk' },
-    { src: 'assets/Logo-plaids.svg', label: 'Plaids' },
-    { src: 'assets/Logo-sierkussens.svg', label: 'Sierkussens' },
-    { src: 'assets/Logo-bedsprei.svg', label: 'Bedspreien' },
-    { src: 'assets/Logo-Picknickkleden.svg', label: 'Picknick' }
-  ];
-
-  var SAMPLE = [
-    '---',
-    'theme: editorial',
-    'align: left',
-    'position: bottom',
-    'accent: #af1c23',
-    'overlay: 55',
-    '---',
-    '',
-    '### Nieuw binnen',
-    '',
-    '# Warmte die blijft hangen',
-    '',
-    'Handgeweven plaids van Europese merken, met **gratis verzending** in NL & BE.',
-    '',
-    '> Voor 22:00 besteld, vandaag verzonden.'
-  ].join('\n');
-
-  /* Terugvaloptie voor de STYLEGUIDE-knop als fetch geblokkeerd is (file://) */
-  var EMBEDDED_BRAND = [
-    '# Dekentje — merkrichtlijnen',
-    '',
-    '| Token | Hex | Gebruik |',
-    '|---|---|---|',
-    '| `--clr-heading` | `#606556` | Alle koppen |',
-    '| `--clr-accent` | `#af1c23` | Accenten, eyebrows, links |',
-    '| `--clr-text` | `#2c2c30` | Bodytekst |',
-    '| `--clr-bg` | `#fdfdfd` | Pagina-achtergrond |',
-    '| `--clr-panel` | `#f3f3f3` | Vlakken en kaarten |',
-    '| `--clr-sale` | `#ab552b` | Sale-labels |',
-    '',
-    'Font voor H tekst: Built Titling Regular',
-    'Font voor P tekst: Circular Std Book',
-    '',
-    'Strakke rechte hoeken gebruiken — geen border-radius.',
-    '',
-    '**Naam:** Dekentje / Dekentje.nl'
-  ].join('\n');
+  var DEFAULT_FONT = 'inter';
 
   var DEFAULTS = {
     ratio: '4:5',
-    image: null, imageSrc: '', imageName: '', imageRatio: null,
+    image: null, imageName: '', imageRatio: null,
     overlay: 45, zoom: 100, focus: 'center',
-    content: SAMPLE, editMode: 'fields',
+    content: '', editMode: 'fields',
     markdown: true, autoFit: true,
-    theme: 'editorial', font: 'brand',
-    accent: '#af1c23', textColor: '#ffffff',
-    inkColor: '#2c2c30', panelColor: '#f3f3f3', headColor: '#606556',
+    theme: 'editorial', font: DEFAULT_FONT,
+    accent: '#e0483e', textColor: '#ffffff',
+    inkColor: '#1f2126', panelColor: '#f4f2ee', headColor: '#1f2126',
     overlayRgb: '0, 0, 0',
     align: 'left', valign: 'bottom',
     textScale: 100, padding: 80, sharp: true,
-    badge: '', logo: '', logoSrc: '', logoSize: 120, logoPos: 'br', logoPlate: true,
+    badge: '', logo: '', logoName: '', logoSize: 120, logoPos: 'br', logoPlate: true,
     format: 'png', exportScale: '1'
   };
 
@@ -151,7 +90,6 @@
   var renderHandle = 0;
   var renderErrorShown = false;
   var exporting = false;
-  var brandFontsOk = null;    // null = nog niet gecontroleerd
 
   /* ===========================================================================
      2. DOM-REFERENTIES & HULPJES
@@ -175,7 +113,7 @@
     fieldsEditor: $('fieldsEditor'), markdownEditor: $('markdownEditor'), mdToggleWrap: $('mdToggleWrap'),
     imageDrop: $('imageDrop'), imageInput: $('imageInput'), imageCard: $('imageCard'),
     imageThumb: $('imageThumb'), imageName: $('imageName'), imageSize: $('imageSize'),
-    imageRemove: $('imageRemove'), photoPicks: $('photoPicks'),
+    imageRemove: $('imageRemove'),
     mdDrop: $('mdDrop'), mdInput: $('mdInput'), contentMdInput: $('contentMdInput'),
     brandReport: $('brandReport'), brandChips: $('brandChips'), brandSwatches: $('brandSwatches'),
     brandFile: $('brandFile'), brandReset: $('brandReset'), brandInfo: $('brandInfo'),
@@ -184,7 +122,7 @@
     customFontInput: $('customFontInput'),
     customHeadName: $('customHeadName'), customBodyName: $('customBodyName'),
     customHeadClear: $('customHeadClear'), customBodyClear: $('customBodyClear'),
-    logoPicks: $('logoPicks'), logoInput: $('logoInput'),
+    logoInput: $('logoInput'), logoName: $('logoName'), logoClear: $('logoClear'),
     dimPill: $('dimPill'), themePill: $('themePill'), statusLine: $('statusLine'),
     fitInfo: $('fitInfo'), toast: $('toast'),
     exportBtn: $('exportBtn'), copyBtn: $('copyBtn'),
@@ -205,29 +143,18 @@
   }
 
   /* Gele melding boven de preview: uitleg waarom iets niet werkt en wat de
-     gebruiker eraan kan doen. Wordt onthouden per tabblad zodra hij is gesloten. */
-  var NOTICE_KEY = 'post-studio-notice-dismissed';
-  function showEnvNotice(title, html, force) {
+     gebruiker eraan kan doen. */
+  function showEnvNotice(title, html) {
     if (!el.envNotice) return;
-    if (!force) {
-      try { if (sessionStorage.getItem(NOTICE_KEY) === '1') return; } catch (err) { /* ok */ }
-    }
     el.envNoticeTitle.textContent = title;
     el.envNoticeText.innerHTML = html;   // alleen eigen, vaste teksten — geen gebruikersinvoer
     el.envNotice.hidden = false;
   }
-  function hideEnvNotice() {
-    el.envNotice.hidden = true;
-    try { sessionStorage.setItem(NOTICE_KEY, '1'); } catch (err) { /* ok */ }
-  }
+  function hideEnvNotice() { el.envNotice.hidden = true; }
   function fileNoticeHtml() {
-    var lines = [
-      'Browsers blokkeren over <code>file://</code> de merklettertypen, het ophalen van <code>STYLEGUIDE.md</code> en de export van meegeleverde foto’s en logo’s.',
-      SERVER_HINT_HTML + '.',
-      'Zelf geüploade foto’s en lettertypen werken altijd, ook zonder server.'
-    ];
-    if (brandFontsOk === false) lines.splice(1, 0, 'De merklettertypen zijn nu vervangen door Bebas Neue en Inter.');
-    return lines.join(' ');
+    return 'Je opent de tool rechtstreeks vanaf schijf (<code>file://</code>). De browser blokkeert dan ' +
+           'afbeeldingen die via een pad worden geladen. ' + SERVER_HINT_HTML + '. ' +
+           'Alles wat je zelf uploadt (foto, logo, lettertype) werkt altijd.';
   }
 
   function readFile(file, as, done) {
@@ -243,10 +170,11 @@
   }
 
   function isDataUrl(value) { return typeof value === 'string' && value.indexOf('data:') === 0; }
+  function baseName(path) { return String(path).split(/[\\/]/).pop().split('?')[0]; }
+  function stripExt(name) { return String(name).replace(/\.[^.]+$/, ''); }
 
-  /* Een bestand uit /assets omzetten naar een data-URL. Zo bevat het canvas
-     geen externe verwijzingen meer en kan html2canvas nooit "taint" raken.
-     Over file:// mislukt dit (fetch is geblokkeerd) - dan blijft het pad staan. */
+  /* Een bestand via een URL omzetten naar een data-URL, zodat het canvas geen
+     externe verwijzingen bevat en html2canvas nooit "taint" raakt. */
   function toDataUrl(src) {
     return Promise.resolve()
       .then(function () { return fetch(src); })
@@ -277,7 +205,7 @@
   }
 
   /* Kleine sleutel/waarde-opslag in IndexedDB voor dingen die niet in
-     localStorage passen: de geüploade foto en eigen lettertypen. */
+     localStorage passen: foto, logo en eigen lettertypen. */
   var DB = (function () {
     var opening = null;
     function open() {
@@ -351,7 +279,7 @@
     var v = String(value).toLowerCase();
     if (FONTS[v]) return v;
     if (/eigen|custom|upload/.test(v)) return FONTS.custom ? 'custom' : null;
-    if (/built|circular|merk|brand|huisstijl/.test(v)) return 'brand';
+    if (/merk|brand|huisstijl|stijlgids/.test(v)) return FONTS.brand ? 'brand' : null;
     if (/playfair|serif|redactioneel|editorial/.test(v)) return 'playfair';
     if (/grotesk|mono|tech/.test(v)) return 'grotesk';
     if (/bebas|impact|display/.test(v)) return 'bebas';
@@ -431,7 +359,7 @@
 
   function renderStyle() {
     var c = el.canvas;
-    var fonts = FONTS[state.font] || FONTS.brand;
+    var fonts = FONTS[state.font] || FONTS[DEFAULT_FONT];
 
     var cls = [
       'post-canvas',
@@ -470,6 +398,10 @@
       el.pcLogo.hidden = true;
       el.pcLogo.removeAttribute('src');
     }
+
+    setText(el.logoName, state.logo ? (state.logoName || 'logo') : 'geen');
+    el.logoName.classList.toggle('is-set', !!state.logo);
+    el.logoClear.hidden = !state.logo;
   }
 
   /* Tekst krimpt automatisch tot ze binnen de veilige zone past.
@@ -540,13 +472,6 @@
 
     setText(el.charCount, state.content.length + ' tekens');
     setText(el.wordCount, String((MD.splitFrontmatter(state.content).body.trim().match(/\S+/g) || []).length));
-
-    Array.prototype.forEach.call(el.photoPicks.children, function (btn) {
-      btn.classList.toggle('is-active', btn.dataset.src === state.imageSrc);
-    });
-    Array.prototype.forEach.call(el.logoPicks.children, function (btn) {
-      btn.classList.toggle('is-active', btn.dataset.src === (state.logoSrc || ''));
-    });
   }
 
   /* Markdown alleen opnieuw ontleden als de tekst of de schakelaar veranderde;
@@ -707,8 +632,9 @@
 
         case 'logo':
           tmp = String(value).trim();
-          if (/^(geen|none|nee|no|false)$/i.test(tmp)) { state.logo = ''; state.logoSrc = ''; }
-          else { state.logo = tmp; state.logoSrc = tmp; embedLogo(tmp); }
+          if (/^(geen|none|nee|no|false)$/i.test(tmp)) clearLogo(true);
+          else if (/^(https?:)?\/|^\.{0,2}\/|\.(svg|png|jpe?g|webp)$/i.test(tmp)) loadLogoFromUrl(tmp);
+          else ok = false;
           break;
 
         case 'logosize': case 'logogrootte':
@@ -892,14 +818,14 @@
     var h = customFonts.heading, b = customFonts.body;
     if (!h && !b) {
       delete FONTS.custom;
-      if (state.font === 'custom') state.font = 'brand';
+      if (state.font === 'custom') state.font = DEFAULT_FONT;
     } else {
       var famH = h ? CUSTOM_FAMILY.heading : CUSTOM_FAMILY.body;
       var famB = b ? CUSTOM_FAMILY.body : CUSTOM_FAMILY.heading;
       FONTS.custom = {
         label: 'Eigen — ' + [h && h.name, b && b.name].filter(Boolean).join(' + '),
-        h: "'" + famH + "', " + BRAND_FONT_H,
-        b: "'" + famB + "', " + BRAND_FONT_B
+        h: "'" + famH + "', " + UI_SANS,
+        b: "'" + famB + "', " + UI_SANS
       };
     }
     buildFontSelect();
@@ -918,7 +844,7 @@
     if (file.size > MAX_FONT_BYTES) { toast('Dit lettertype is te groot (' + humanSize(file.size) + '). Maximaal 8 MB.', 'error'); return; }
 
     readFile(file, 'dataurl', function (dataUrl) {
-      var rec = { name: file.name.replace(/\.[^.]+$/, ''), dataUrl: dataUrl, format: format };
+      var rec = { name: stripExt(file.name), dataUrl: dataUrl, format: format };
       var previous = customFonts[slot];
       customFonts[slot] = rec;
       injectCustomFonts();
@@ -966,10 +892,10 @@
   }
 
   /* ===========================================================================
-     MERKSTIJL UIT MARKDOWN
+     7. FOTO, LOGO & STIJLGIDS
      ========================================================================= */
 
-  /* Lettertypekiezer opbouwen (labels veranderen mee met de merkstijl) */
+  /* Lettertypekiezer opbouwen (labels veranderen mee met stijlgids en uploads) */
   function buildFontSelect() {
     var current = state.font || el.font.value;
     el.font.innerHTML = '';
@@ -979,98 +905,26 @@
       opt.textContent = FONTS[key].label;
       el.font.appendChild(opt);
     });
-    el.font.value = FONTS[current] ? current : 'brand';
+    el.font.value = FONTS[current] ? current : DEFAULT_FONT;
   }
 
+  /* Fonts die een stijlgids noemt. Ze renderen alleen als ze op de computer
+     staan of als je het bestand uploadt onder "Eigen lettertype". */
   function setBrandFonts(fonts) {
-    brandFonts = fonts || null;
-    if (brandFonts && (brandFonts.heading || brandFonts.body)) {
-      FONTS.brand.h = "'" + (brandFonts.heading || 'Built Titling') + "', 'Bebas Neue', Impact, sans-serif";
-      FONTS.brand.b = "'" + (brandFonts.body || 'Circular Std') + "', 'Inter', system-ui, sans-serif";
-      FONTS.brand.label = 'Merkstijl: ' + [brandFonts.heading, brandFonts.body].filter(Boolean).join(' + ');
+    brandFonts = (fonts && (fonts.heading || fonts.body)) ? fonts : null;
+    if (brandFonts) {
+      var h = brandFonts.heading || brandFonts.body;
+      var b = brandFonts.body || brandFonts.heading;
+      FONTS.brand = {
+        label: 'Stijlgids — ' + [brandFonts.heading, brandFonts.body].filter(Boolean).join(' + '),
+        h: "'" + h.replace(/'/g, '') + "', " + UI_SANS,
+        b: "'" + b.replace(/'/g, '') + "', " + UI_SANS
+      };
     } else {
-      brandFonts = null;
-      FONTS.brand.h = BRAND_FONT_H;
-      FONTS.brand.b = BRAND_FONT_B;
-      FONTS.brand.label = BRAND_LABEL;
+      delete FONTS.brand;
+      if (state.font === 'brand') state.font = DEFAULT_FONT;
     }
     buildFontSelect();
-  }
-
-  /* Snelkeuzetegels voor de meegeleverde beelden en logo's */
-  function buildPicks() {
-    PHOTOS.forEach(function (item) {
-      var btn = document.createElement('button');
-      btn.type = 'button';
-      btn.title = item.label;
-      btn.setAttribute('aria-label', 'Foto: ' + item.label);
-      btn.dataset.src = item.src;
-      btn.style.backgroundImage = 'url("' + item.src + '")';
-      btn.addEventListener('click', function () { useAssetImage(item); });
-      el.photoPicks.appendChild(btn);
-    });
-
-    LOGOS.forEach(function (item) {
-      var btn = document.createElement('button');
-      btn.type = 'button';
-      btn.title = item.label;
-      btn.setAttribute('aria-label', 'Logo: ' + item.label);
-      btn.dataset.src = item.src;
-      if (item.src) { btn.style.backgroundImage = 'url("' + item.src + '")'; }
-      else { btn.className = 'pick--none'; btn.textContent = 'Geen'; }
-      btn.addEventListener('click', function () {
-        if (!item.src) { state.logo = ''; state.logoSrc = ''; scheduleRender(); return; }
-        useAssetLogo(item);
-      });
-      el.logoPicks.appendChild(btn);
-    });
-  }
-
-  /* Meegeleverde afbeelding inladen. Eerst proberen we er een data-URL van te
-     maken (betrouwbare export); lukt dat niet (file://), dan het pad zelf. */
-  function useAssetImage(item) {
-    el.statusLine.textContent = 'Foto laden…';
-    toDataUrl(item.src)
-      .catch(function () { return item.src; })
-      .then(function (url) {
-        var img = new Image();
-        img.onload = function () {
-          state.image = url;
-          state.imageSrc = item.src;
-          state.imageName = item.src.split('/').pop();
-          state.imageRatio = img.naturalWidth / img.naturalHeight;
-          el.statusLine.textContent = DEFAULT_STATUS;
-          showImageCard(null);
-          scheduleRender();
-          DB.del('image').catch(noop);
-          if (!isDataUrl(url) && IS_FILE) {
-            showEnvNotice('Deze foto kan straks niet worden geëxporteerd', fileNoticeHtml());
-          }
-        };
-        img.onerror = function () {
-          el.statusLine.textContent = DEFAULT_STATUS;
-          toast('Kon ' + item.src + ' niet laden.', 'error');
-        };
-        img.src = url;
-      });
-  }
-
-  /* Logo uit /assets: pad direct tonen, data-URL volgt zodra die er is */
-  function embedLogo(src) {
-    if (!src || isDataUrl(src)) return;
-    toDataUrl(src)
-      .then(function (url) {
-        if (state.logoSrc !== src) return;      // gebruiker koos inmiddels iets anders
-        state.logo = url;
-        scheduleRender();
-      })
-      .catch(noop);                             // file://: pad blijft staan, export waarschuwt
-  }
-  function useAssetLogo(item) {
-    state.logo = item.src;
-    state.logoSrc = item.src;
-    scheduleRender();
-    embedLogo(item.src);
   }
 
   /* Geuploade foto verwerken: te grote beelden worden verkleind zodat de
@@ -1102,11 +956,10 @@
         }
 
         state.image = url;
-        state.imageSrc = '';
         state.imageName = file.name;
         state.imageRatio = w / h;
         el.statusLine.textContent = DEFAULT_STATUS;
-        showImageCard(file);
+        showImageCard(file.size);
         scheduleRender();
         DB.set('image', { dataUrl: url, name: file.name, ratio: w / h, size: file.size }).catch(noop);
         toast('Foto geplaatst: ' + file.name, 'ok');
@@ -1120,37 +973,145 @@
   }
 
   function restoreUploadedImage() {
-    if (state.imageSrc) return Promise.resolve();
     return DB.get('image').then(function (rec) {
       if (!rec || !isDataUrl(rec.dataUrl)) return;
       state.image = rec.dataUrl;
-      state.imageSrc = '';
       state.imageName = rec.name || 'foto';
       state.imageRatio = rec.ratio || null;
-      showImageCard(rec.size ? { size: rec.size } : null);
+      showImageCard(rec.size || 0);
       scheduleRender();
     }).catch(noop);
   }
 
-  function showImageCard(file) {
+  function showImageCard(bytes) {
     el.imageCard.hidden = !state.image;
     el.imageDrop.hidden = !!state.image;
     if (!state.image) return;
     el.imageThumb.style.backgroundImage = 'url("' + state.image + '")';
     el.imageName.textContent = state.imageName;
-    el.imageSize.textContent = file ? humanSize(file.size)
-      : (state.imageRatio ? state.imageRatio.toFixed(2) + ' : 1' : 'uit assets');
+    el.imageSize.textContent = bytes ? humanSize(bytes)
+      : (state.imageRatio ? state.imageRatio.toFixed(2) + ' : 1' : '');
   }
 
   function clearImage() {
-    state.image = null; state.imageSrc = ''; state.imageName = ''; state.imageRatio = null;
-    showImageCard(null);
+    state.image = null; state.imageName = ''; state.imageRatio = null;
+    showImageCard(0);
     scheduleRender();
     DB.del('image').catch(noop);
   }
 
-  /* --- De kern: een stijlgids omzetten in postopmaak.
-         Geeft false terug als er niets bruikbaars in het bestand zat. --- */
+  /* --- Logo: upload (bewaard in IndexedDB) of via frontmatter-URL ---
+     SVG's worden gerasteriseerd naar PNG. html2canvas laat een SVG zonder
+     width/height-attributen (heel gebruikelijk bij exports uit Illustrator)
+     namelijk leeg, terwijl de preview hem wél toont. Een PNG van 1600 px is
+     ruim scherp genoeg voor een logo van maximaal 640 px in de 2x-export. */
+  var LOGO_RASTER_EDGE = 1600;
+
+  function loadImage(src) {
+    return new Promise(function (resolve, reject) {
+      var img = new Image();
+      img.onload = function () { resolve(img); };
+      img.onerror = function () { reject(new Error('Afbeelding kon niet worden gelezen')); };
+      img.src = src;
+    });
+  }
+
+  function rasterizeSvg(svgText) {
+    var doc = new DOMParser().parseFromString(svgText, 'image/svg+xml');
+    var root = doc.documentElement;
+    if (!root || root.nodeName.toLowerCase() !== 'svg' || doc.querySelector('parsererror')) {
+      return Promise.reject(new Error('Ongeldige SVG'));
+    }
+
+    var vb = (root.getAttribute('viewBox') || '').trim().split(/[\s,]+/).map(parseFloat);
+    var w = parseFloat(root.getAttribute('width')) || 0;
+    var h = parseFloat(root.getAttribute('height')) || 0;
+    if (vb.length === 4 && vb[2] > 0 && vb[3] > 0) { w = w || vb[2]; h = h || vb[3]; }
+    if (!(w > 0 && h > 0)) { w = w || 512; h = h || 512; }
+    if (!root.getAttribute('viewBox')) root.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+
+    var f = LOGO_RASTER_EDGE / Math.max(w, h);
+    var pw = Math.max(1, Math.round(w * f)), ph = Math.max(1, Math.round(h * f));
+    root.setAttribute('width', pw);
+    root.setAttribute('height', ph);
+
+    var src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(new XMLSerializer().serializeToString(root));
+    return loadImage(src).then(function (img) {
+      var cv = document.createElement('canvas');
+      cv.width = pw; cv.height = ph;
+      cv.getContext('2d').drawImage(img, 0, 0, pw, ph);
+      return cv.toDataURL('image/png');
+    });
+  }
+
+  /* Elke logobron (bestand of data-URL) omzetten naar iets wat html2canvas
+     zeker rendert: SVG -> PNG, andere formaten ongewijzigd maar gecontroleerd. */
+  function prepareLogo(dataUrl) {
+    if (/^data:image\/svg\+xml/i.test(dataUrl)) {
+      var text;
+      try {
+        var comma = dataUrl.indexOf(',');
+        var meta = dataUrl.slice(0, comma), payload = dataUrl.slice(comma + 1);
+        text = /;base64/i.test(meta) ? decodeURIComponent(escape(atob(payload))) : decodeURIComponent(payload);
+      } catch (err) { text = null; }
+      if (text) return rasterizeSvg(text).catch(function () { return loadImage(dataUrl).then(function () { return dataUrl; }); });
+    }
+    return loadImage(dataUrl).then(function () { return dataUrl; });
+  }
+
+  function useUploadedLogo(file) {
+    var isSvg = /^image\/svg/i.test(file.type) || /\.svg$/i.test(file.name);
+    if (!/^image\//.test(file.type) && !isSvg) { toast('Kies een afbeelding (PNG, SVG, JPG) als logo.', 'error'); return; }
+    if (file.size > MAX_LOGO_BYTES) { toast('Dit logo is te groot (' + humanSize(file.size) + '). Maximaal 6 MB.', 'error'); return; }
+
+    readFile(file, 'dataurl', function (raw) {
+      var url = isSvg && !/^data:image\/svg\+xml/i.test(raw)
+        ? raw.replace(/^data:[^;,]*/, 'data:image/svg+xml')   // .svg zonder mimetype (Windows)
+        : raw;
+      prepareLogo(url).then(function (ready) {
+        state.logo = ready;
+        state.logoName = stripExt(file.name);
+        scheduleRender();
+        DB.set('logo', { dataUrl: ready, name: state.logoName }).catch(noop);
+        toast('Logo geplaatst: ' + file.name, 'ok');
+      }).catch(function () {
+        toast('Dit logo kan de browser niet weergeven (' + file.name + ').', 'error');
+      });
+    });
+  }
+
+  function loadLogoFromUrl(src) {
+    state.logo = src;
+    state.logoName = stripExt(baseName(src));
+    toDataUrl(src)
+      .then(prepareLogo)
+      .then(function (url) {
+        if (state.logo !== src) return;          // gebruiker koos inmiddels iets anders
+        state.logo = url;
+        scheduleRender();
+        DB.set('logo', { dataUrl: url, name: state.logoName }).catch(noop);
+      })
+      .catch(function () {
+        if (IS_FILE) showEnvNotice('Het logo kan niet worden ingebed', fileNoticeHtml());
+      });
+  }
+
+  function clearLogo(silent) {
+    state.logo = ''; state.logoName = '';
+    DB.del('logo').catch(noop);
+    if (!silent) scheduleRender();
+  }
+
+  function restoreLogo() {
+    return DB.get('logo').then(function (rec) {
+      if (!rec || !isDataUrl(rec.dataUrl)) return;
+      state.logo = rec.dataUrl;
+      state.logoName = rec.name || 'logo';
+      scheduleRender();
+    }).catch(noop);
+  }
+
+  /* --- Stijlgids omzetten in postopmaak. false als er niets bruikbaars in zat. --- */
   function loadBrandText(text, filename, quiet) {
     var b = BRAND.extract(text);
     var inlineMeta = MD.splitFrontmatter(text).meta;
@@ -1235,6 +1196,17 @@
     if (b.roles.accent && BRAND.contrastRatio(b.roles.accent, '#000000') < 2.2) {
       toast('Let op: dit accent heeft weinig contrast op donkere foto’s.', 'warn');
     }
+    // Fonts uit een stijlgids zijn alleen namen: even checken of ze er echt zijn
+    if ((b.fonts.heading || b.fonts.body) && document.fonts && typeof document.fonts.check === 'function') {
+      var missing = [b.fonts.heading, b.fonts.body].filter(Boolean).filter(function (fam) {
+        try { return !document.fonts.check("16px '" + fam + "'"); } catch (err) { return false; }
+      });
+      if (missing.length) {
+        setTimeout(function () {
+          toast('Lettertype ' + missing.join(' en ') + ' staat niet op deze computer. Upload het fontbestand onder "Eigen lettertype".', 'warn', 8000);
+        }, 3400);
+      }
+    }
   }
 
   function clearBrand() {
@@ -1246,30 +1218,8 @@
     scheduleRender();
   }
 
-  /* Merklettertypen echt laden en controleren; zonder server mislukt dit en
-     vallen we terug op Bebas Neue / Inter. Dat melden we één keer. */
-  function checkBrandFonts() {
-    if (!document.fonts || typeof document.fonts.load !== 'function') return;
-    Promise.all([
-      document.fonts.load("400 16px 'Built Titling'"),
-      document.fonts.load("400 16px 'Circular Std'")
-    ]).then(function (res) {
-      brandFontsOk = res.every(function (faces) { return faces && faces.length > 0; });
-    }).catch(function () {
-      brandFontsOk = false;
-    }).then(function () {
-      if (brandFontsOk) return;
-      if (IS_FILE) {
-        showEnvNotice('Je opent de tool rechtstreeks vanaf schijf (file://)', fileNoticeHtml());
-      } else {
-        toast('Merklettertypen (Built Titling / Circular Std) konden niet worden geladen — er wordt een vervangend lettertype gebruikt.', 'warn', 7000);
-      }
-      scheduleRender();
-    });
-  }
-
   /* ===========================================================================
-     7. EVENTS
+     8. EVENTS
      ========================================================================= */
   function on(node, ev, fn) { if (node) node.addEventListener(ev, fn); }
 
@@ -1341,7 +1291,10 @@
 
   /* Eén ingang voor alle bestanden: afbeelding, tekst, stijlgids of lettertype */
   function routeFile(file, prefer) {
-    if (/^image\//.test(file.type)) { useUploadedImage(file); return; }
+    if (/^image\//.test(file.type)) {
+      if (prefer === 'logo') useUploadedLogo(file); else useUploadedImage(file);
+      return;
+    }
 
     if (fontFormat(file.name)) {
       useCustomFont(customFonts.heading && !customFonts.body ? 'body' : 'heading', file);
@@ -1393,7 +1346,7 @@
       });
     });
 
-    /* Markdown -> state (en velden blijven stilletjes mee-actueel) */
+    /* Markdown -> state */
     on(el.content, 'input', function (e) { state.content = e.target.value; scheduleRender(); });
     Array.prototype.forEach.call(document.querySelectorAll('.mdbtn[data-md]'), function (btn) {
       btn.addEventListener('click', function () { applyMdAction(btn.dataset.md); });
@@ -1413,7 +1366,6 @@
     on(el.brandReset, 'click', clearBrand);
     on(el.envNoticeClose, 'click', hideEnvNotice);
 
-    on($('loadSample'), 'click', function () { setContentFromMd(SAMPLE, 'voorbeeld'); });
     on($('clearContent'), 'click', function () {
       setContent(fieldsMeta.front || '', false);
       if (state.editMode === 'fields' && fieldEls.label) fieldEls.label.focus();
@@ -1423,6 +1375,7 @@
       if (el.contentMdInput.files[0]) routeFile(el.contentMdInput.files[0], 'content');
       el.contentMdInput.value = '';
     });
+    on($('loadBrandMd'), 'click', function () { el.mdInput.click(); });
 
     /* Eigen lettertypen */
     var pendingFontSlot = 'heading';
@@ -1435,54 +1388,25 @@
     on(el.customHeadClear, 'click', function () { clearCustomFont('heading'); });
     on(el.customBodyClear, 'click', function () { clearCustomFont('body'); });
 
+    /* Logo */
     on($('logoUploadBtn'), 'click', function () { el.logoInput.click(); });
     on(el.logoInput, 'change', function () {
-      var file = el.logoInput.files[0];
-      if (file) {
-        if (!/^image\//.test(file.type) && !/\.svg$/i.test(file.name)) {
-          toast('Kies een afbeelding (PNG, SVG, JPG) als logo.', 'error');
-        } else {
-          readFile(file, 'dataurl', function (url) {
-            state.logo = url; state.logoSrc = '';
-            scheduleRender();
-            toast('Logo geplaatst.', 'ok');
-          });
-        }
-      }
+      if (el.logoInput.files[0]) useUploadedLogo(el.logoInput.files[0]);
       el.logoInput.value = '';
     });
-
-    /* STYLEGUIDE.md ophalen; onder file:// blokkeert de browser fetch,
-       dan vallen we terug op een ingebouwde kopie van de merktokens. */
-    on($('loadStyleguide'), 'click', function () {
-      var btn = $('loadStyleguide');
-      btn.disabled = true;
-      Promise.resolve()
-        .then(function () { return fetch('STYLEGUIDE.md'); })
-        .then(function (res) { if (!res.ok) throw new Error('HTTP ' + res.status); return res.text(); })
-        .then(function (text) { loadBrandText(text, 'STYLEGUIDE.md'); })
-        .catch(function () {
-          loadBrandText(EMBEDDED_BRAND, 'ingebouwde merktokens');
-          if (IS_FILE) {
-            toast('STYLEGUIDE.md kan niet worden gelezen over file:// — ingebouwde merktokens gebruikt. ' + SERVER_HINT, 'warn', 8000);
-            showEnvNotice('STYLEGUIDE.md kon niet worden geladen', fileNoticeHtml());
-          } else {
-            toast('STYLEGUIDE.md niet gevonden naast index.html — ingebouwde merktokens gebruikt.', 'warn', 6000);
-          }
-        })
-        .then(function () { btn.disabled = false; });
-    });
+    on(el.logoClear, 'click', function () { clearLogo(false); });
 
     on(el.exportBtn, 'click', function () { exportImage('download'); });
     on(el.copyBtn, 'click', function () { exportImage('clipboard'); });
     on($('resetBtn'), 'click', function () {
-      if (!window.confirm('Alle instellingen terugzetten naar de standaard? Eigen lettertypen blijven bewaard.')) return;
+      if (!window.confirm('Alle instellingen, tekst, foto en logo wissen? Eigen lettertypen blijven bewaard.')) return;
       state = Object.assign({}, DEFAULTS);
-      if (!FONTS.custom && state.font === 'custom') state.font = 'brand';
+      if (FONTS.custom) state.font = 'custom';
       clearBrand();
       clearImage();
-      setContent(state.content, true);
-      toast('Terug naar de standaardinstellingen.', 'ok');
+      clearLogo(true);
+      setContent('', true);
+      toast('Alles is teruggezet naar de standaard.', 'ok');
     });
 
     /* Slepen over het hele venster: afbeelding, markdown of font, automatisch
@@ -1526,7 +1450,7 @@
   }
 
   /* ===========================================================================
-     8. EXPORT
+     9. EXPORT
      -----------------------------------------------------------------------
      Het canvas staat op werkelijke displaygrootte. html2canvas rendert het
      opnieuw met factor (1080 * resolutie) / displaybreedte, zodat tekst
@@ -1593,8 +1517,10 @@
       return 'html2canvas is niet geladen — controleer je internetverbinding en herlaad de pagina.';
     }
     if (IS_FILE && state.image && !isDataUrl(state.image)) {
-      return 'Deze foto uit /assets kan over file:// niet worden geëxporteerd (de browser blokkeert het canvas). ' +
-             SERVER_HINT + ' Of upload de foto via de uploadknop — dat werkt altijd.';
+      return 'Deze foto is via een pad geladen en kan over file:// niet worden geëxporteerd. ' + SERVER_HINT;
+    }
+    if (!state.image && !MD.splitFrontmatter(state.content).body.trim()) {
+      return 'Er is nog niets om te exporteren: upload een foto of vul tekst in.';
     }
     return null;
   }
@@ -1645,9 +1571,8 @@
   function reportExportError(err) {
     var text = String((err && (err.name ? err.name + ': ' + err.message : err.message)) || err || 'onbekende fout');
     if (/security|taint|cross-?origin|cors/i.test(text)) {
-      toast('Export geblokkeerd door de browser (beveiligd canvas): een afbeelding komt rechtstreeks van je schijf. ' +
-            SERVER_HINT + ' Of upload de foto via de uploadknop.', 'error', 10000);
-      showEnvNotice('De export is geblokkeerd', fileNoticeHtml(), true);
+      toast('Export geblokkeerd door de browser (beveiligd canvas): een afbeelding is via een pad geladen. ' + SERVER_HINT, 'error', 10000);
+      showEnvNotice('De export is geblokkeerd', fileNoticeHtml());
     } else if (/notallowed|permission|clipboard|gesture/i.test(text)) {
       toast('Het klembord weigerde de afbeelding. Geef de browser toestemming of gebruik Download.', 'error');
     } else if (/timeout|image/i.test(text)) {
@@ -1680,8 +1605,7 @@
 
     var blocker = exportBlocker();
     if (blocker) {
-      toast(blocker, 'error', 10000);
-      if (IS_FILE) showEnvNotice('De export kan zo niet werken', fileNoticeHtml(), true);
+      toast(blocker, 'error', 8000);
       return;
     }
 
@@ -1716,13 +1640,12 @@
   }
 
   /* ===========================================================================
-     9. OPSLAG & START
+     10. OPSLAG & START
      ========================================================================= */
-  var STORAGE_KEY = 'post-studio-v1';
+  var STORAGE_KEY = 'post-studio-v2';
   var persistTimer = 0;
 
-  /* Alles bewaren behalve de foto zelf (die staat in IndexedDB).
-     Kwam de foto of het logo uit /assets, dan onthouden we het pad. */
+  /* Instellingen en tekst in localStorage; foto, logo en fonts in IndexedDB. */
   function persistNow() {
     clearTimeout(persistTimer);
     persistTimer = 0;
@@ -1731,8 +1654,7 @@
       Object.keys(DEFAULTS).forEach(function (k) { copy[k] = state[k]; });
       copy.image = null;
       copy.imageRatio = null;
-      if (copy.logoSrc) copy.logo = copy.logoSrc;
-      else if (isDataUrl(copy.logo)) { copy.logo = ''; copy.logoSrc = ''; }
+      copy.logo = state.logo ? 'idb' : '';   // de data zelf staat in IndexedDB
       copy.__meta = lastMetaSig;
       copy.__fonts = brandFonts;
       localStorage.setItem(STORAGE_KEY, JSON.stringify(copy));
@@ -1758,42 +1680,33 @@
     });
     if (!RATIOS[state.ratio]) state.ratio = DEFAULTS.ratio;
     if (THEMES.indexOf(state.theme) === -1) state.theme = DEFAULTS.theme;
-    if (!FONTS[state.font] && state.font !== 'custom') state.font = DEFAULTS.font;   // 'custom' volgt uit IndexedDB
+    if (!FONTS[state.font] && state.font !== 'custom') state.font = DEFAULT_FONT;   // 'custom' volgt uit IndexedDB
     if (state.editMode !== 'fields' && state.editMode !== 'markdown') state.editMode = DEFAULTS.editMode;
     state.image = null;
     state.imageRatio = null;
+    state.logo = '';       // komt terug uit IndexedDB
   }
 
   function init() {
-    buildPicks();
     restore();
     buildFontSelect();
 
     setVal(el.content, state.content);
     fillFields();
-    showImageCard(null);
+    showImageCard(0);
     bindEvents();
     safeRender();
 
-    // Foto en logo terugzetten na een herlaadbeurt
-    if (state.imageSrc) {
-      var pick = PHOTOS.filter(function (p) { return p.src === state.imageSrc; })[0];
-      if (pick) useAssetImage(pick); else { state.imageSrc = ''; state.imageName = ''; }
-    } else {
-      restoreUploadedImage();
-    }
-    if (state.logoSrc && !isDataUrl(state.logo)) embedLogo(state.logoSrc);
+    // Foto, logo en eigen fonts terugzetten na een herlaadbeurt
+    restoreUploadedImage();
+    restoreLogo();
     restoreCustomFonts();
 
     // Webfonts komen later binnen: dan opnieuw passend maken
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(scheduleRender);
-    checkBrandFonts();
 
     if (typeof html2canvas === 'undefined') {
       toast('html2canvas kon niet worden geladen (geen internet?). Exporteren werkt pas na een herlaadbeurt met verbinding.', 'warn', 8000);
-    }
-    if (IS_FILE) {
-      showEnvNotice('Je opent de tool rechtstreeks vanaf schijf (file://)', fileNoticeHtml());
     }
 
     // Meeschalen met het venster, zonder onnodige rondjes

@@ -1,11 +1,10 @@
 /* =============================================================================
    POST STUDIO — Instagram Post Maker
    -----------------------------------------------------------------------------
-   1.  Design tokens            5.  Formulier-elementen
-   2.  Merklettertypen          6.  Werkblad, stage & statusbalk
-   3.  Reset & basis            7.  Post-canvas + markdown-typografie
-   4.  App-shell & sidebar      8.  Sjablonen (thema's)
-                                9.  Toast & responsive
+   1.  Design tokens            5.  Werkblad, stage & statusbalk
+   2.  Reset & basis            6.  Post-canvas + markdown-typografie
+   3.  App-shell & sidebar      7.  Sjablonen (thema's)
+   4.  Formulier-elementen      8.  Responsive
    ============================================================================= */
 
 
@@ -50,25 +49,7 @@
 
 
 /* =============================================================================
-   2. MERKLETTERTYPEN — lokale OTF's uit /assets/fonts
-   Let op: browsers blokkeren @font-face over file:// — draai de tool via een
-   lokale server (Live Server / npx serve) om deze fonts te zien.
-   ============================================================================= */
-@font-face { font-family:'Built Titling'; src:url('../assets/fonts/built%20titling%20lt.otf') format('opentype'); font-weight:300; font-style:normal; font-display:swap; }
-@font-face { font-family:'Built Titling'; src:url('../assets/fonts/built%20titling%20rg.otf') format('opentype'); font-weight:400; font-style:normal; font-display:swap; }
-@font-face { font-family:'Built Titling'; src:url('../assets/fonts/built%20titling%20sb.otf') format('opentype'); font-weight:600; font-style:normal; font-display:swap; }
-@font-face { font-family:'Built Titling'; src:url('../assets/fonts/built%20titling%20bd.otf') format('opentype'); font-weight:700; font-style:normal; font-display:swap; }
-@font-face { font-family:'Built Titling'; src:url('../assets/fonts/built%20titling%20rg%20it.otf') format('opentype'); font-weight:400; font-style:italic; font-display:swap; }
-
-@font-face { font-family:'Circular Std'; src:url('../assets/fonts/CircularStd-Book.otf') format('opentype'); font-weight:400; font-style:normal; font-display:swap; }
-@font-face { font-family:'Circular Std'; src:url('../assets/fonts/CircularStd-BookItalic.otf') format('opentype'); font-weight:400; font-style:italic; font-display:swap; }
-@font-face { font-family:'Circular Std'; src:url('../assets/fonts/CircularStd-Medium.otf') format('opentype'); font-weight:500; font-style:normal; font-display:swap; }
-@font-face { font-family:'Circular Std'; src:url('../assets/fonts/CircularStd-Bold.otf') format('opentype'); font-weight:700; font-style:normal; font-display:swap; }
-@font-face { font-family:'Circular Std'; src:url('../assets/fonts/CircularStd-Black.otf') format('opentype'); font-weight:900; font-style:normal; font-display:swap; }
-
-
-/* =============================================================================
-   3. RESET & BASIS
+   2. RESET & BASIS
    ============================================================================= */
 *, *::before, *::after { box-sizing: border-box; }
 
@@ -125,7 +106,7 @@ kbd { border: 1px solid var(--line); box-shadow: 0 1px 0 var(--line); }
 
 
 /* =============================================================================
-   4. APP-SHELL & SIDEBAR
+   3. APP-SHELL & SIDEBAR
    ============================================================================= */
 .app {
   display: grid;
@@ -205,7 +186,7 @@ kbd { border: 1px solid var(--line); box-shadow: 0 1px 0 var(--line); }
 
 
 /* =============================================================================
-   5. FORMULIER-ELEMENTEN
+   4. FORMULIER-ELEMENTEN
    ============================================================================= */
 .field { display: flex; flex-direction: column; gap: 8px; }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
@@ -251,7 +232,7 @@ kbd { border: 1px solid var(--line); box-shadow: 0 1px 0 var(--line); }
 .mdbtn:active { transform: translateY(1px); }
 
 /* --- Eigen lettertypen --- */
-.fontrow {
+.filerow {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -260,10 +241,10 @@ kbd { border: 1px solid var(--line); box-shadow: 0 1px 0 var(--line); }
   border-radius: var(--radius-sm);
   background: var(--surface-2);
 }
-.fontrow__slot { flex: none; width: 36px; font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--text-mute); }
-.fontrow__name { flex: 1; min-width: 0; font-size: 12px; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.fontrow__name.is-set { color: var(--text); font-weight: 500; }
-.fontrow .btn { flex: none; }
+.filerow__slot { flex: none; width: 36px; font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--text-mute); }
+.filerow__name { flex: 1; min-width: 0; font-size: 12px; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.filerow__name.is-set { color: var(--text); font-weight: 500; }
+.filerow .btn { flex: none; }
 
 .hint { margin: 0; font-size: 11.5px; line-height: 1.45; color: var(--text-mute); }
 .hint code { font-size: 11px; }
@@ -300,11 +281,14 @@ select {
 }
 select option { background: var(--surface-2); }
 
-/* --- Segmented control (radio's) --- */
-.seg { display: grid; gap: 6px; background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 4px; }
+/* --- Segmented control (radio's) ---
+   De echte inputs zijn onzichtbaar maar blijven focusbaar. Ze staan absoluut
+   BINNEN een relatieve ouder (1x1 px): zonder die ouder worden ze ten opzichte
+   van het document geplaatst, en scrolt de browser bij focus de hele app weg. */
+.seg { position: relative; display: grid; gap: 6px; background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 4px; }
 .seg--2 { grid-template-columns: repeat(2, 1fr); }
 .seg--3 { grid-template-columns: repeat(3, 1fr); }
-.seg input { position: absolute; opacity: 0; pointer-events: none; }
+.seg input { position: absolute; top: 0; left: 0; width: 1px; height: 1px; margin: 0; opacity: 0; pointer-events: none; }
 .seg label {
   display: flex;
   flex-direction: column;
@@ -382,8 +366,8 @@ input[type="color"]::-webkit-color-swatch { border: 1px solid rgba(255,255,255,.
 input[type="color"]::-moz-color-swatch { border: 1px solid rgba(255,255,255,.16); border-radius: var(--radius-xs); }
 
 /* --- Schakelaar --- */
-.switch { display: flex; align-items: center; gap: 10px; cursor: pointer; -webkit-user-select: none; user-select: none; }
-.switch input { position: absolute; opacity: 0; pointer-events: none; }
+.switch { position: relative; display: flex; align-items: center; gap: 10px; cursor: pointer; -webkit-user-select: none; user-select: none; }
+.switch input { position: absolute; top: 0; left: 0; width: 1px; height: 1px; margin: 0; opacity: 0; pointer-events: none; }
 .switch__track {
   position: relative;
   width: 38px; height: 22px;
@@ -494,29 +478,6 @@ input[type="color"]::-moz-color-swatch { border: 1px solid rgba(255,255,255,.16)
 .filecard__meta i { font-style: normal; font-size: 11px; color: var(--text-mute); }
 .filecard .iconbtn { margin-left: auto; }
 
-/* --- Snelkeuze-tegels (foto's & logo's uit /assets) --- */
-.quickpick { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; }
-.quickpick button {
-  position: relative;
-  aspect-ratio: 1;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-xs);
-  background: var(--surface-2) center/cover no-repeat;
-  cursor: pointer;
-  overflow: hidden;
-  transition: border-color var(--t), transform var(--t), box-shadow var(--t);
-}
-.quickpick button:hover { border-color: var(--brand); transform: translateY(-2px); box-shadow: var(--shadow-md); }
-.quickpick button.is-active { border-color: var(--brand); box-shadow: 0 0 0 2px var(--brand-soft); }
-.quickpick--logo { grid-template-columns: repeat(3, 1fr); }
-.quickpick--logo button { background-size: 74%; background-color: #fff; }
-.quickpick button.pick--none {
-  display: grid; place-items: center;
-  background: var(--surface-2);
-  color: var(--text-mute);
-  font-size: 11px;
-}
-
 /* --- Merkrapport: wat is er uit de markdown gehaald --- */
 .report {
   display: flex;
@@ -578,8 +539,8 @@ input[type="color"]::-moz-color-swatch { border: 1px solid rgba(255,255,255,.16)
 .swatches button:hover::after { opacity: 1; }
 
 /* --- Sjabloonkiezer --- */
-.themes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
-.themes input { position: absolute; opacity: 0; pointer-events: none; }
+.themes { position: relative; display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
+.themes input { position: absolute; top: 0; left: 0; width: 1px; height: 1px; margin: 0; opacity: 0; pointer-events: none; }
 .themes label {
   display: flex;
   flex-direction: column;
@@ -622,7 +583,7 @@ input[type="color"]::-moz-color-swatch { border: 1px solid rgba(255,255,255,.16)
 
 
 /* =============================================================================
-   6. WERKBLAD, STAGE & STATUSBALK
+   5. WERKBLAD, STAGE & STATUSBALK
    ============================================================================= */
 .workspace {
   display: flex;
@@ -783,7 +744,7 @@ input[type="color"]::-moz-color-swatch { border: 1px solid rgba(255,255,255,.16)
 
 
 /* =============================================================================
-   7. POST-CANVAS + MARKDOWN-TYPOGRAFIE
+   6. POST-CANVAS + MARKDOWN-TYPOGRAFIE
    -----------------------------------------------------------------------------
    Het canvas wordt op werkelijke pixelgrootte gerenderd (geen CSS-transform),
    zodat de preview exact gelijk is aan de export. Alle maten binnen het canvas
@@ -818,7 +779,7 @@ input[type="color"]::-moz-color-swatch { border: 1px solid rgba(255,255,255,.16)
   --pc-radius: 0px;
   --pc-ov:     .45;
   --pc-ov-rgb: 0, 0, 0;
-  --pc-font-h: 'Playfair Display', Georgia, serif;
+  --pc-font-h: 'Inter', system-ui, sans-serif;
   --pc-font-b: 'Inter', system-ui, sans-serif;
 
   color: var(--pc-text);
@@ -1020,7 +981,7 @@ input[type="color"]::-moz-color-swatch { border: 1px solid rgba(255,255,255,.16)
 
 
 /* =============================================================================
-   8. SJABLONEN — elk sjabloon herschikt dezelfde markdown-uitvoer
+   7. SJABLONEN — elk sjabloon herschikt dezelfde markdown-uitvoer
    ============================================================================= */
 
 /* --- Minimal: tekst direct op de foto, alleen een zachte schaduw --- */
@@ -1117,7 +1078,7 @@ input[type="color"]::-moz-color-swatch { border: 1px solid rgba(255,255,255,.16)
 
 
 /* =============================================================================
-   9. RESPONSIVE
+   8. RESPONSIVE
    ============================================================================= */
 @media (max-width: 1080px) {
   :root { --sidebar-w: 330px; }

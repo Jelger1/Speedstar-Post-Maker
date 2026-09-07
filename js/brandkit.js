@@ -33,9 +33,6 @@ window.IPM.brand = (function () {
   /* Gewichts- en stijlwoorden die niet bij de familienaam horen */
   var WEIGHT_WORDS = /\b(thin|extralight|ultralight|light|book|regular|normal|medium|semibold|demibold|demi|bold|extrabold|heavy|black|italic|oblique|el|lt|rg|sb|bd|it)\b/gi;
 
-  /* Families die deze tool zelf meelevert via @font-face */
-  var LOCAL_FAMILIES = ['built titling', 'circular std'];
-
   var RE_HEX  = /#([0-9a-f]{8}|[0-9a-f]{6}|[0-9a-f]{3})\b/i;
   var RE_VAR  = /--([a-z0-9][a-z0-9-]*)\s*:\s*([^;\n}]+)/gi;
 
@@ -106,10 +103,6 @@ window.IPM.brand = (function () {
     return first.replace(/\S+/g, function (w) {
       return w.charAt(0).toUpperCase() + w.slice(1);
     });
-  }
-
-  function isLocalFamily(name) {
-    return LOCAL_FAMILIES.indexOf(String(name).toLowerCase().trim()) !== -1;
   }
 
   /* Waarde die écht op een lettertypenaam lijkt (filtert "clamp(2rem, 6vw)" weg) */
@@ -262,7 +255,6 @@ window.IPM.brand = (function () {
     luminance: luminance,
     contrastRatio: contrastRatio,
     isLight: isLight,
-    isLocalFamily: isLocalFamily,
     cleanFamily: cleanFamily
   };
 })();
