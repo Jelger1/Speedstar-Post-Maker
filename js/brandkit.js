@@ -96,7 +96,7 @@ window.IPM.brand = (function () {
                  .replace(/[.;]+$/, '')
                  .trim();
 
-    var stripped = first.replace(WEIGHT_WORDS, '').replace(/\s{2,}/g, ' ').trim();
+    var stripped = first.replace(WEIGHT_WORDS, '').replace(/\s{2,}/g, ' ').replace(/[-_\s]+$/, '').trim();
     if (stripped.length >= 3) first = stripped;
 
     // Titel-case zodat "built titling" netjes als "Built Titling" toont
