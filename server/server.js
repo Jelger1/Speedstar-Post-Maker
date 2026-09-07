@@ -6,18 +6,21 @@
      1. De tool zelf serveren (index.html, css/, js/) zodat frontend en API op
         dezelfde origin draaien — geen CORS-gedoe, geen file://-beperkingen.
      2. POST /api/suggest: de AI-assistent. Ontvangt de briefing, de huidige
-        tekst, de stijlgids en de instellingen, en laat Claude een of meer
-        complete postvarianten schrijven die passen bij het merk.
+        tekst, de stijlgids en de instellingen, en laat het OpenAI-model een
+        of meer complete postvarianten schrijven die passen bij het merk.
 
-   De API-key staat ALLEEN hier, in de omgevingsvariabele ANTHROPIC_API_KEY.
-   De browser krijgt hem nooit te zien.
+   De API-key staat ALLEEN hier, in de omgevingsvariabele OPENAI_API_KEY.
+   De browser krijgt hem nooit te zien. Geen dependencies: Node's ingebouwde
+   fetch praat rechtstreeks met https://api.openai.com.
 
    Omgevingsvariabelen:
-     ANTHROPIC_API_KEY   verplicht — je Anthropic-key
-     ACCESS_CODE         aanbevolen — gedeelde code die de tool moet meesturen,
+     OPENAI_API_KEY      verplicht — je OpenAI-key (sk-...)
+     ACCESS_CODE         optioneel — gedeelde code die de tool moet meesturen,
                          zodat niet iedereen die je URL kent jouw key opstookt
-     AI_MODEL            standaard claude-opus-5
-     AI_EFFORT           low | medium | high (standaard high)
+     AI_MODEL            standaard gpt-4.1 (elk chat-model met structured
+                         outputs werkt, bijv. gpt-4o, gpt-4.1-mini)
+     AI_REASONING        alleen voor redeneermodellen (o-serie, gpt-5):
+                         low | medium | high
      ALLOWED_ORIGINS     komma-lijst van extra origins die de API mogen
                          aanroepen (bijv. http://127.0.0.1:5500 voor Live Server)
      RATE_LIMIT          verzoeken per IP per 10 minuten (standaard 30)
@@ -29,15 +32,12 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
-const { z } = require('zod');
-const AnthropicModule = require('@anthropic-ai/sdk');
-const Anthropic = AnthropicModule.default || AnthropicModule;
-const { zodOutputFormat } = require('@anthropic-ai/sdk/helpers/zod');
-
 const ROOT = path.resolve(__dirname, '..');
 const PORT = parseInt(process.env.PORT, 10) || 3000;
-const MODEL = process.env.AI_MODEL || 'claude-opus-5';
-const EFFORT = ['low', 'medium', 'high'].includes(process.env.AI_EFFORT) ? process.env.AI_EFFORT : 'high';
+const MODEL = process.env.AI_MODEL || 'gpt-4.1';
+const REASONING = ['low', 'medium', 'high'].includes(process.env.AI_REASONING) ? process.env.AI_REASONING : null;
+const OPENAI_URL = (process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1').replace(/\/+$/, '') + '/chat/completions';
+const AI_TIMEOUT_MS = 110000;
 const ACCESS_CODE = (process.env.ACCESS_CODE || '').trim();
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
 const RATE_LIMIT = parseInt(process.env.RATE_LIMIT, 10) || 30;
@@ -45,36 +45,42 @@ const MOCK = process.env.AI_MOCK === '1';
 const MAX_BODY = 400 * 1024;          // 400 KB: briefing + stijlgids + tekst
 const MAX_STYLEGUIDE_CHARS = 60000;   // ~15k tokens; ruim voor een stijlgids
 
-const client = process.env.ANTHROPIC_API_KEY ? new Anthropic() : null;
+const API_KEY = (process.env.OPENAI_API_KEY || '').trim();
 
 /* ---------------------------------------------------------------------------
-   Uitvoerschema — Claude vult dit exact in (structured outputs)
+   Uitvoerschema — het model vult dit exact in (OpenAI structured outputs,
+   strict: elke eigenschap verplicht, geen extra velden)
    ------------------------------------------------------------------------- */
 const THEMES = ['minimal', 'editorial', 'panel', 'bold', 'band', 'quote'];
 
-const VariantSchema = z.object({
-  name: z.string().describe('Korte naam van de invalshoek, max 4 woorden, bijv. "Urgentie" of "Warm & persoonlijk"'),
-  label: z.string().describe('Eyebrow-label bovenaan de post, 1-3 woorden, of leeg'),
-  title: z.string().describe('De kop. Max ~7 woorden per regel; een \\n scheidt regels. Krachtig, geen punt aan het eind'),
-  body: z.string().describe('Bodytekst, 0-2 korte zinnen (max ~140 tekens). **woord** geeft nadruk in de accentkleur. Leeg als niet nodig'),
-  list: z.array(z.string()).describe('0-3 korte opsommingspunten, elk max ~6 woorden'),
-  quote: z.string().describe('Optioneel citaat of afsluitende regel, of leeg'),
-  badge: z.string().describe('Handle/bijschrift onderin, bijv. @merknaam, of leeg om de huidige te behouden'),
-  style: z.object({
-    theme: z.enum(THEMES),
-    align: z.enum(['left', 'center', 'right']),
-    position: z.enum(['top', 'middle', 'bottom']),
-    overlay: z.number().int().min(0).max(90).describe('Donkerte van de foto in %, 35-65 is gebruikelijk'),
-    textScale: z.number().int().min(70).max(145).describe('Tekstgrootte in %, 100 is normaal'),
-    accent: z.string().describe('Accentkleur als #rrggbb uit het merkpalet, of leeg om de huidige te behouden'),
-    textColor: z.string().describe('Tekstkleur als #rrggbb, of leeg om de huidige te behouden')
-  }),
-  why: z.string().describe('Eén zin, in de taal van de gebruiker: waarom deze variant past bij briefing en merk')
-});
+function obj(properties) {
+  return { type: 'object', properties, required: Object.keys(properties), additionalProperties: false };
+}
 
-const ResponseSchema = z.object({
-  variants: z.array(VariantSchema).describe('1 tot 3 varianten'),
-  notes: z.string().describe('Optionele korte opmerking voor de gebruiker (bijv. ontbrekende info in de briefing), of leeg')
+const RESPONSE_SCHEMA = obj({
+  variants: {
+    type: 'array', description: '1 tot 3 varianten',
+    items: obj({
+      name:  { type: 'string', description: 'Korte naam van de invalshoek, max 4 woorden, bijv. "Urgentie" of "Warm & persoonlijk"' },
+      label: { type: 'string', description: 'Eyebrow-label bovenaan de post, 1-3 woorden, of leeg' },
+      title: { type: 'string', description: 'De kop. Max ~7 woorden per regel; een \\n scheidt regels. Krachtig, geen punt aan het eind' },
+      body:  { type: 'string', description: 'Bodytekst, 0-2 korte zinnen (max ~140 tekens). **woord** geeft nadruk in de accentkleur. Leeg als niet nodig' },
+      list:  { type: 'array', items: { type: 'string' }, description: '0-3 korte opsommingspunten, elk max ~6 woorden' },
+      quote: { type: 'string', description: 'Optioneel citaat of afsluitende regel, of leeg' },
+      badge: { type: 'string', description: 'Handle/bijschrift onderin, bijv. @merknaam, of leeg om de huidige te behouden' },
+      style: obj({
+        theme:     { type: 'string', enum: THEMES },
+        align:     { type: 'string', enum: ['left', 'center', 'right'] },
+        position:  { type: 'string', enum: ['top', 'middle', 'bottom'] },
+        overlay:   { type: 'integer', description: 'Donkerte van de foto in %, 0-90; 35-65 is gebruikelijk' },
+        textScale: { type: 'integer', description: 'Tekstgrootte in %, 70-145; 100 is normaal' },
+        accent:    { type: 'string', description: 'Accentkleur als #rrggbb uit het merkpalet, of leeg om de huidige te behouden' },
+        textColor: { type: 'string', description: 'Tekstkleur als #rrggbb, of leeg om de huidige te behouden' }
+      }),
+      why: { type: 'string', description: 'Eén zin, in de taal van de gebruiker: waarom deze variant past bij briefing en merk' }
+    })
+  },
+  notes: { type: 'string', description: 'Optionele korte opmerking voor de gebruiker (bijv. ontbrekende info in de briefing), of leeg' }
 });
 
 /* ---------------------------------------------------------------------------
@@ -104,7 +110,7 @@ const SYSTEM_PROMPT = `Je bent een senior social-media copywriter en art directo
 6. Kleuren: gebruik alleen hexwaarden uit het meegegeven merkpalet. Geen palet? Laat accent en textColor leeg zodat de huidige instelling blijft staan.
 7. Schrijf in de taal van de briefing (meestal Nederlands). Bij "verbeteren": behoud de boodschap en de feiten, maak het scherper en meer on-brand, lever precies 1 variant. Bij "genereren": lever 3 duidelijk verschillende invalshoeken (bijv. urgentie / voordeel / gevoel).
 
-Lever uitsluitend het gevraagde JSON-object.`;
+Lever uitsluitend het gevraagde JSON-object, zonder tekst eromheen.`;
 
 /* ---------------------------------------------------------------------------
    Hulpfuncties
@@ -235,59 +241,99 @@ async function suggest(p) {
     };
   }
 
-  if (!client) {
-    throw Object.assign(new Error('De server heeft geen ANTHROPIC_API_KEY. Zet die als omgevingsvariabele (op Render: Environment → Add Environment Variable).'), { status: 503 });
+  if (!API_KEY) {
+    throw Object.assign(new Error('De server heeft geen OPENAI_API_KEY. Zet die als omgevingsvariabele (op Render: Environment → Add Environment Variable).'), { status: 503 });
   }
 
-  // Stabiele prefix eerst (systeemprompt), daarna de stijlgids met cache-markering:
-  // dezelfde stijlgids wordt bij elk verzoek hergebruikt en hoeft niet opnieuw
-  // te worden verwerkt.
-  const system = [{ type: 'text', text: SYSTEM_PROMPT }];
+  // Vaste blokken eerst (systeemprompt, stijlgids), variabele input als laatste:
+  // zo kan OpenAI's automatische prompt caching het begin hergebruiken.
+  const messages = [{ role: 'system', content: SYSTEM_PROMPT }];
   if (styleguideText.trim()) {
-    system.push({
-      type: 'text',
-      text: '## Merkstijlgids (markdown, door de gebruiker geüpload)\n\n' + styleguideText,
-      cache_control: { type: 'ephemeral' }
+    messages.push({ role: 'system', content: '## Merkstijlgids (markdown, door de gebruiker geüpload)\n\n' + styleguideText });
+  }
+  messages.push({ role: 'user', content: buildUserMessage(p) });
+
+  const body = {
+    model: MODEL,
+    messages,
+    response_format: { type: 'json_schema', json_schema: { name: 'post_suggestions', strict: true, schema: RESPONSE_SCHEMA } }
+  };
+  if (REASONING) body.reasoning_effort = REASONING;
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), AI_TIMEOUT_MS);
+  let res, data;
+  try {
+    res = await fetch(OPENAI_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + API_KEY },
+      body: JSON.stringify(body),
+      signal: controller.signal
     });
+    data = await res.json().catch(() => ({}));
+  } catch (err) {
+    if (err && err.name === 'AbortError') throw Object.assign(new Error('De AI deed er te lang over. Probeer het opnieuw.'), { status: 504 });
+    throw Object.assign(new Error('De server kan OpenAI niet bereiken. Probeer het later opnieuw.'), { status: 502 });
+  } finally {
+    clearTimeout(timer);
   }
 
-  const response = await client.messages.parse({
-    model: MODEL,
-    max_tokens: 16000,
-    output_config: { effort: EFFORT, format: zodOutputFormat(ResponseSchema) },
-    system,
-    messages: [{ role: 'user', content: buildUserMessage(p) }]
+  if (!res.ok) {
+    throw Object.assign(new Error(describeOpenAiError(res.status, data)), { status: res.status === 429 ? 429 : 502, upstream: true });
+  }
+
+  const choice = data.choices && data.choices[0];
+  if (!choice || !choice.message) throw Object.assign(new Error('Het model gaf geen antwoord terug. Probeer het opnieuw.'), { status: 502 });
+  if (choice.message.refusal) {
+    throw Object.assign(new Error('Het model heeft dit verzoek geweigerd: ' + choice.message.refusal), { status: 422 });
+  }
+  if (choice.finish_reason === 'length') {
+    throw Object.assign(new Error('Het antwoord was te lang en is afgebroken. Probeer een kortere briefing.'), { status: 502 });
+  }
+
+  let out;
+  try { out = JSON.parse(choice.message.content); }
+  catch (err) { throw Object.assign(new Error('Het model gaf geen geldige JSON terug. Probeer het opnieuw.'), { status: 502 }); }
+  if (!out || !Array.isArray(out.variants) || !out.variants.length) {
+    throw Object.assign(new Error('Het model gaf geen voorstellen terug. Probeer het opnieuw.'), { status: 502 });
+  }
+
+  // Getallen binnen de grenzen houden (strict schema kent geen min/max)
+  out.variants = out.variants.slice(0, 3);
+  out.variants.forEach(v => {
+    v.style = v.style || {};
+    v.style.overlay = Math.min(90, Math.max(0, Math.round(Number(v.style.overlay) || 45)));
+    v.style.textScale = Math.min(145, Math.max(70, Math.round(Number(v.style.textScale) || 100)));
+    v.list = Array.isArray(v.list) ? v.list.slice(0, 3) : [];
   });
 
-  if (response.stop_reason === 'refusal') {
-    throw Object.assign(new Error('Het model heeft dit verzoek geweigerd' + (response.stop_details && response.stop_details.explanation ? ': ' + response.stop_details.explanation : '.')), { status: 422 });
-  }
-  if (!response.parsed_output) {
-    throw Object.assign(new Error('Het model gaf geen geldig antwoord terug. Probeer het opnieuw.'), { status: 502 });
-  }
-
-  const out = response.parsed_output;
   if (truncated) out.notes = [out.notes, 'De stijlgids is ingekort tot de eerste 60.000 tekens.'].filter(Boolean).join(' ');
+  const u = data.usage || {};
   out.usage = {
-    input: response.usage.input_tokens,
-    cached: response.usage.cache_read_input_tokens || 0,
-    output: response.usage.output_tokens,
-    model: response.model
+    input: u.prompt_tokens || 0,
+    cached: (u.prompt_tokens_details && u.prompt_tokens_details.cached_tokens) || 0,
+    output: u.completion_tokens || 0,
+    model: data.model || MODEL
   };
   return out;
 }
 
-/* Fouten van de SDK vertalen naar iets waar de gebruiker wat mee kan */
+/* Foutmeldingen van OpenAI vertalen naar iets waar de gebruiker wat mee kan */
+function describeOpenAiError(status, data) {
+  const msg = (data && data.error && data.error.message) || '';
+  const code = (data && data.error && data.error.code) || '';
+  if (status === 401) return 'De OPENAI_API_KEY op de server is ongeldig of verlopen.';
+  if (status === 403) return 'De API-key heeft geen toegang tot dit model of deze organisatie.';
+  if (status === 404 || code === 'model_not_found') return `Het model "${MODEL}" bestaat niet of is niet beschikbaar voor deze key. Pas AI_MODEL aan op Render.`;
+  if (status === 429 && /quota|billing/i.test(msg + code)) return 'Het OpenAI-tegoed is op of er is geen betaalmethode ingesteld. Controleer Billing op platform.openai.com.';
+  if (status === 429) return 'De AI is even druk (rate limit). Probeer het over een minuut opnieuw.';
+  if (status >= 500) return 'OpenAI heeft een storing. Probeer het later opnieuw.';
+  return 'De AI-aanroep werd afgewezen: ' + (msg || ('HTTP ' + status));
+}
+
+/* Alles wat nog geen nette status heeft, wordt een 500 */
 function describeError(err) {
-  if (err && typeof err.status === 'number' && err.message && !(err instanceof Anthropic.APIError)) {
-    return { status: err.status, message: err.message };
-  }
-  if (err instanceof Anthropic.AuthenticationError) return { status: 502, message: 'De API-key op de server is ongeldig of verlopen.' };
-  if (err instanceof Anthropic.PermissionDeniedError) return { status: 502, message: 'De API-key heeft geen toegang tot dit model.' };
-  if (err instanceof Anthropic.RateLimitError) return { status: 429, message: 'De AI is even druk (rate limit). Probeer het over een minuut opnieuw.' };
-  if (err instanceof Anthropic.BadRequestError) return { status: 502, message: 'De AI-aanroep werd afgewezen: ' + err.message };
-  if (err instanceof Anthropic.APIConnectionError) return { status: 502, message: 'De server kan de AI niet bereiken. Probeer het later opnieuw.' };
-  if (err instanceof Anthropic.APIError) return { status: 502, message: `AI-fout (${err.status}): ${err.message}` };
+  if (err && typeof err.status === 'number' && err.message) return { status: err.status, message: err.message };
   return { status: 500, message: 'Onverwachte serverfout: ' + (err && err.message ? err.message : String(err)) };
 }
 
@@ -328,7 +374,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'OPTIONS') { res.writeHead(204, cors); res.end(); return; }
 
     if (url === '/api/health' && req.method === 'GET') {
-      json(res, 200, { ok: true, model: MODEL, hasKey: !!client || MOCK, needsCode: !!ACCESS_CODE, mock: MOCK }, cors);
+      json(res, 200, { ok: true, model: MODEL, hasKey: !!API_KEY || MOCK, needsCode: !!ACCESS_CODE, mock: MOCK }, cors);
       return;
     }
 
@@ -347,7 +393,7 @@ const server = http.createServer(async (req, res) => {
         json(res, 200, result, cors);
       } catch (err) {
         const d = describeError(err);
-        if (d.status >= 500) console.error('[suggest]', err);
+        if (d.status >= 500 || err.upstream) console.error('[suggest]', d.status, d.message);
         json(res, d.status, { error: d.message }, cors);
       }
       return;
@@ -363,5 +409,5 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(PORT, () => {
   console.log(`Post Studio draait op http://localhost:${PORT}`);
-  console.log(`  model: ${MODEL} · effort: ${EFFORT} · key: ${client ? 'aanwezig' : 'ONTBREEKT'} · toegangscode: ${ACCESS_CODE ? 'aan' : 'uit'}${MOCK ? ' · MOCK-modus' : ''}`);
+  console.log(`  model: ${MODEL}${REASONING ? ' · reasoning: ' + REASONING : ''} · OPENAI_API_KEY: ${API_KEY ? 'aanwezig' : 'ONTBREEKT'} · toegangscode: ${ACCESS_CODE ? 'aan' : 'uit'}${MOCK ? ' · MOCK-modus' : ''}`);
 });

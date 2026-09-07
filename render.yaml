@@ -12,13 +12,11 @@ services:
     envVars:
       - key: NODE_VERSION
         value: "20"
-      - key: ANTHROPIC_API_KEY
+      - key: OPENAI_API_KEY
         sync: false          # plak je key in het Render-dashboard, nooit in git
       - key: ACCESS_CODE
-        sync: false          # gedeelde code die de tool meestuurt (zelf kiezen)
+        sync: false          # optioneel: gedeelde code die de tool meestuurt
       - key: AI_MODEL
-        value: claude-opus-5
-      - key: AI_EFFORT
-        value: high
+        value: gpt-4.1
       - key: RATE_LIMIT
         value: "30"

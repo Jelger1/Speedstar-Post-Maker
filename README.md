@@ -30,15 +30,15 @@ Insta-post-maker/
 │   ├── markdown.js       # Frontmatter + markdown -> HTML (marked.js of eigen fallback)
 │   ├── brandkit.js       # Huisstijl uit een stijlgids destilleren
 │   └── app.js            # State, velden-editor, AI-paneel, renderpijplijn, export
-├── server/server.js      # Backend: serveert de tool + /api/suggest (Claude)
-├── package.json          # Node-dependencies voor de backend
+├── server/server.js      # Backend: serveert de tool + /api/suggest (OpenAI)
+├── package.json          # Start-script voor Render (geen dependencies)
 ├── render.yaml           # Render Blueprint (één klik deployen)
 └── .env.example          # Overzicht van de omgevingsvariabelen
 ```
 
 ---
 
-## AI-assistent (Claude via Render)
+## AI-assistent (OpenAI via Render)
 
 De AI-assistent schrijft complete posts op basis van een korte briefing
 ("40% korting op alle plaids, alleen dit weekend" of "nog 6 dagen tot de
@@ -48,9 +48,9 @@ invalshoeken; één klik zet tekst én vormgeving in de tool. **Verbeter tekst**
 herschrijft wat er al staat, scherper en on-brand.
 
 De API-key staat nooit in de browser. Een kleine Node-server
-(`server/server.js`) houdt hem in een omgevingsvariabele en praat met Claude
-via de officiële SDK, met structured output zodat het antwoord altijd in de
-velden past.
+(`server/server.js`) houdt hem in een omgevingsvariabele en praat met de
+OpenAI-API (chat completions, structured outputs) zodat het antwoord altijd
+in de velden past. De server heeft geen dependencies.
 
 ### Deployen op Render
 
@@ -59,12 +59,12 @@ velden past.
 2. Render → **New → Blueprint** → kies de repo. Render leest `render.yaml` en
    maakt een Web Service `post-studio` aan.
 3. Vul onder **Environment** in:
-   - `ANTHROPIC_API_KEY` — je Anthropic-key
-   - `ACCESS_CODE` — een zelfgekozen code; de tool stuurt die mee, zodat niet
-     iedereen die de URL kent jouw key kan gebruiken
+   - `OPENAI_API_KEY` — je OpenAI-key
+   - `ACCESS_CODE` — optioneel: een zelfgekozen code; de tool vraagt er dan
+     om, zodat niet iedereen die de URL kent jouw key kan gebruiken
 4. Deploy. Open `https://<jouw-service>.onrender.com`: de tool draait daar
-   compleet, inclusief AI. Vul in het paneel **AI-assistent → AI-instellingen**
-   alleen de toegangscode in (Server-URL mag leeg: het is dezelfde site).
+   compleet, inclusief AI, zonder verdere instellingen. Heb je een
+   `ACCESS_CODE` gezet, dan vraagt het AI-paneel die één keer.
 
 Zonder Blueprint: New → Web Service, runtime Node, build `npm install`,
 start `npm start`, health check `/api/health`, plus dezelfde variabelen.
@@ -73,7 +73,7 @@ start `npm start`, health check `/api/health`, plus dezelfde variabelen.
 
 ```bash
 npm install
-set ANTHROPIC_API_KEY=sk-ant-...     # PowerShell: $env:ANTHROPIC_API_KEY="sk-ant-..."
+set OPENAI_API_KEY=sk-...            # PowerShell: $env:OPENAI_API_KEY="sk-..."
 set ACCESS_CODE=test
 npm start                            # -> http://localhost:3000
 ```
@@ -86,16 +86,16 @@ de tool de Render-URL in als Server-URL.
 
 | Variabele | Betekenis |
 |---|---|
-| `ANTHROPIC_API_KEY` | Verplicht. Je Anthropic-key. |
-| `ACCESS_CODE` | Aanbevolen. Gedeelde code die de tool meestuurt (`X-Access-Code`). |
-| `AI_MODEL` | Standaard `claude-opus-5`. |
-| `AI_EFFORT` | `low`, `medium` of `high` (standaard). Lager = sneller en goedkoper. |
+| `OPENAI_API_KEY` | Verplicht. Je OpenAI-key. |
+| `ACCESS_CODE` | Optioneel. Gedeelde code die de tool meestuurt (`X-Access-Code`). |
+| `AI_MODEL` | Standaard `gpt-4.1`. Elk chatmodel met structured outputs werkt (`gpt-4.1-mini` is goedkoper). |
+| `AI_REASONING` | Alleen voor redeneermodellen (o-serie, gpt-5): `low`, `medium`, `high`. |
 | `ALLOWED_ORIGINS` | Extra origins die de API mogen aanroepen, kommagescheiden. |
 | `RATE_LIMIT` | Verzoeken per IP per 10 minuten (standaard 30). |
 | `AI_MOCK` | `1` = geen echte AI-aanroep, vaste testvariant (voor testen). |
 
-De stijlgids wordt met prompt caching meegestuurd: bij herhaalde aanvragen met
-dezelfde stijlgids betaal je maar een fractie voor dat deel.
+De stijlgids gaat als vast blok vooraan mee, zodat OpenAI's automatische
+prompt caching bij herhaalde aanvragen een groot deel goedkoper maakt.
 
 ---
 

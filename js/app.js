@@ -1315,7 +1315,7 @@
         if (!info.hasKey) {
           setAiStatus('bad', 'server mist API-key');
           showAiSettings('hide');
-          toast('De AI-server draait, maar heeft geen ANTHROPIC_API_KEY. Zet die op Render onder Environment en deploy opnieuw.', 'error', 10000);
+          toast('De AI-server draait, maar heeft geen OPENAI_API_KEY. Zet die op Render onder Environment en deploy opnieuw.', 'error', 10000);
           return false;
         }
         if (info.needsCode && !state.aiCode) {
