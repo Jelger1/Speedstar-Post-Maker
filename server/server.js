@@ -39,7 +39,10 @@ const REASONING = ['low', 'medium', 'high'].includes(process.env.AI_REASONING) ?
 const OPENAI_URL = (process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1').replace(/\/+$/, '') + '/chat/completions';
 const AI_TIMEOUT_MS = 110000;
 const ACCESS_CODE = (process.env.ACCESS_CODE || '').trim();
-const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
+// Origins die de API altijd mogen aanroepen: de GitHub Pages-versie van deze
+// tool. Extra origins (bijv. Live Server) via ALLOWED_ORIGINS.
+const DEFAULT_ALLOWED_ORIGINS = ['https://jelger1.github.io'];
+const ALLOWED_ORIGINS = DEFAULT_ALLOWED_ORIGINS.concat((process.env.ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean));
 const RATE_LIMIT = parseInt(process.env.RATE_LIMIT, 10) || 30;
 const MOCK = process.env.AI_MOCK === '1';
 const MAX_BODY = 400 * 1024;          // 400 KB: briefing + stijlgids + tekst

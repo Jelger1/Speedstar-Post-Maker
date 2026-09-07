@@ -1526,9 +1526,18 @@
   var aiVariants = [];
 
   /* Basis-URL van de API: ingesteld adres, of anders de site zelf */
+  var DEFAULT_AI_ENDPOINT = (function () {
+    var m = document.querySelector('meta[name="ai-endpoint"]');
+    return m ? String(m.getAttribute('content') || '').trim().replace(/\/+$/, '') : '';
+  })();
+
+  /* Volgorde: handmatig ingesteld adres > vast adres uit index.html > deze site.
+     Draait de tool op de Render-server zelf, dan valt het vaste adres samen met
+     de eigen origin en is er niets in te stellen. */
   function aiBase() {
     var v = String(state.aiEndpoint || '').trim().replace(/\/+$/, '').replace(/\/api$/, '');
     if (v) return v;
+    if (DEFAULT_AI_ENDPOINT) return DEFAULT_AI_ENDPOINT;
     return IS_FILE ? '' : window.location.origin;
   }
 

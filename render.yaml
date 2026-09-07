@@ -20,3 +20,5 @@ services:
         value: gpt-4.1
       - key: RATE_LIMIT
         value: "30"
+      - key: ALLOWED_ORIGINS
+        value: https://jelger1.github.io

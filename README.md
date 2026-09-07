@@ -78,9 +78,18 @@ set ACCESS_CODE=test
 npm start                            # -> http://localhost:3000
 ```
 
-Wil je de tool via Live Server blijven openen en alleen de API op Render
-gebruiken? Zet dan op Render `ALLOWED_ORIGINS=http://127.0.0.1:5500` en vul in
-de tool de Render-URL in als Server-URL.
+### Twee adressen, één AI
+
+- **Render** (`https://post-studio-95r8.onrender.com`): de complete tool
+  inclusief AI-server. Dit is de hoofdlink.
+- **GitHub Pages** (`https://jelger1.github.io/insta-post-maker/`): dezelfde
+  tool als statische site. GitHub kan geen Node-server draaien, dus de AI
+  praat via de Render-server. Het adres daarvan staat vast in `index.html`
+  (`<meta name="ai-endpoint">`) en de server staat die origin toe.
+
+Verhuist de Render-service naar een andere URL, pas dan die meta-tag aan. Wil
+je de tool via Live Server openen met de AI op Render, zet dan op Render
+`ALLOWED_ORIGINS=http://127.0.0.1:5500`.
 
 ### Omgevingsvariabelen
 
