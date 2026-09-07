@@ -291,10 +291,12 @@
           <div class="ai-results" id="aiResults" hidden></div>
           <p class="hint" id="aiNotes" hidden></p>
 
-          <details class="subpanel">
+          <!-- Alleen zichtbaar als de tool NIET op zijn eigen server draait, of als
+               de server een toegangscode vraagt. Op Render regelt hij zichzelf. -->
+          <details class="subpanel" id="aiSettings" hidden>
             <summary class="subpanel__head">AI-instellingen <span class="ai-status" id="aiStatus">niet gecontroleerd</span></summary>
             <div class="subpanel__body">
-              <div class="field">
+              <div class="field" id="aiEndpointField">
                 <label class="label" for="aiEndpoint">Server-URL <i class="label__opt">leeg = deze site</i></label>
                 <input type="text" id="aiEndpoint" placeholder="https://post-studio.onrender.com" autocomplete="off" spellcheck="false">
               </div>

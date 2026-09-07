@@ -131,6 +131,7 @@
     aiBrief: $('aiBrief'), aiGenerate: $('aiGenerate'), aiImprove: $('aiImprove'), aiCheck: $('aiCheck'),
     aiResults: $('aiResults'), aiNotes: $('aiNotes'), aiContext: $('aiContext'),
     aiEndpoint: $('aiEndpoint'), aiCode: $('aiCode'), aiStatus: $('aiStatus'), aiDot: $('aiDot'), aiInfo: $('aiInfo'),
+    aiSettings: $('aiSettings'), aiEndpointField: $('aiEndpointField'),
     envNotice: $('envNotice'), envNoticeTitle: $('envNoticeTitle'),
     envNoticeText: $('envNoticeText'), envNoticeClose: $('envNoticeClose')
   };
@@ -1280,35 +1281,70 @@
   }
 
   /* Bereikbaarheid en configuratie van de server controleren */
+  /* Draait de tool op zijn eigen backend (Render)? Dan is er niets in te stellen. */
+  function aiSameOrigin() {
+    return !IS_FILE && aiBase() === window.location.origin;
+  }
+
+  /* Instellingen alleen tonen als de gebruiker er echt iets moet doen:
+       'hide'  - verbonden, niets nodig
+       'code'  - server vraagt een toegangscode (URL-veld weg als het deze site is)
+       'full'  - server niet gevonden: URL (en code) invullen */
+  function showAiSettings(mode) {
+    if (!el.aiSettings) return;
+    el.aiSettings.hidden = mode === 'hide';
+    el.aiEndpointField.hidden = mode === 'code' && aiSameOrigin();
+    if (mode !== 'hide') el.aiSettings.open = true;
+  }
+
+  var aiHealthRetries = 0;
   function aiHealth(showToast) {
     var base = aiBase();
     if (!base) {
       setAiStatus('bad', 'server-URL ontbreekt');
+      showAiSettings('full');
       if (showToast) toast('Vul de URL van je Render-server in bij AI-instellingen.', 'warn');
       return Promise.resolve(false);
     }
     setAiStatus('busy', 'verbinden…');
     return Promise.resolve()
-      .then(function () { return fetch(base + '/api/health', { method: 'GET', headers: aiHeaders() }); })
+      .then(function () { return fetch(base + '/api/health', { method: 'GET', headers: aiHeaders(), cache: 'no-store' }); })
       .then(function (res) { if (!res.ok) throw new Error('HTTP ' + res.status); return res.json(); })
       .then(function (info) {
+        aiHealthRetries = 0;
         if (!info.hasKey) {
           setAiStatus('bad', 'server mist API-key');
-          if (showToast) toast('De server draait, maar heeft geen ANTHROPIC_API_KEY. Zet die in de omgevingsvariabelen op Render.', 'error', 8000);
+          showAiSettings('hide');
+          toast('De AI-server draait, maar heeft geen ANTHROPIC_API_KEY. Zet die op Render onder Environment en deploy opnieuw.', 'error', 10000);
           return false;
         }
         if (info.needsCode && !state.aiCode) {
           setAiStatus('bad', 'toegangscode nodig');
+          showAiSettings('code');
           if (showToast) toast('Deze server vraagt een toegangscode. Vul hem in bij AI-instellingen.', 'warn');
           return false;
         }
         setAiStatus('ok', 'verbonden' + (info.mock ? ' (testmodus)' : ''));
+        showAiSettings('hide');
         if (showToast) toast('AI-server bereikbaar' + (info.model ? ' — model ' + info.model : '') + '.', 'ok');
         return true;
       })
       .catch(function () {
+        // Op Render slaapt een gratis service na een kwartier; opstarten duurt
+        // tot een minuut. Op de eigen site dus rustig blijven proberen.
+        if (aiSameOrigin() && aiHealthRetries < 6 && !showToast) {
+          aiHealthRetries++;
+          setAiStatus('busy', 'server wordt gestart…');
+          setTimeout(function () { aiHealth(false); }, 10000);
+          return false;
+        }
         setAiStatus('bad', 'niet bereikbaar');
-        if (showToast) toast('De AI-server is niet bereikbaar op ' + base + '. Controleer de URL en of de service op Render draait.', 'error', 8000);
+        showAiSettings(aiSameOrigin() ? 'hide' : 'full');
+        if (showToast || aiSameOrigin()) {
+          toast(aiSameOrigin()
+            ? 'De AI op deze server reageert niet. Controleer in het Render-dashboard onder Logs of de service draait.'
+            : 'De AI-server is niet bereikbaar op ' + base + '. Controleer de URL en of de service op Render draait.', 'error', 9000);
+        }
         return false;
       });
   }
@@ -1396,7 +1432,7 @@
       })
       .catch(function (err) {
         var msg = err && err.name === 'AbortError' ? 'De AI deed er te lang over (meer dan 2 minuten). Probeer het opnieuw.' : (err && err.message) || String(err);
-        if (err && err.status === 401) { setAiStatus('bad', 'toegangscode klopt niet'); }
+        if (err && err.status === 401) { setAiStatus('bad', 'toegangscode klopt niet'); showAiSettings('code'); }
         else if (err && err.status === 429) { setAiStatus('ok', 'verbonden'); }
         else if (!err || !err.status) { setAiStatus('bad', 'niet bereikbaar'); if (!/te lang/.test(msg)) msg = 'De AI-server is niet bereikbaar op ' + base + '. Controleer de URL bij AI-instellingen.'; }
         else setAiStatus('bad', 'fout');
@@ -2013,7 +2049,7 @@
     setVal(el.aiEndpoint, state.aiEndpoint);
     setVal(el.aiCode, state.aiCode);
     updateAiContext();
-    if (aiBase()) aiHealth(false); else setAiStatus('', 'server-URL invullen');
+    if (aiBase()) aiHealth(false); else { setAiStatus('', 'server-URL invullen'); showAiSettings('full'); }
 
     // Webfonts komen later binnen: dan opnieuw passend maken
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(scheduleRender);
