@@ -1,556 +1,347 @@
 <!DOCTYPE html>
 <html lang="nl">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Post Studio — Instagram Post Maker</title>
-<meta name="description" content="Maak Instagram-posts uit een foto, je eigen tekst en een markdown-stijlgids. Live preview, export naar PNG/JPG.">
-
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,500;0,700;1,500&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Op Dekentje.nl vind je de mooiste, gezelligste en warmste dekentjes voor jouw huis. Plaids, bedspreien en picknickkleden — duurzaam gemaakt in Europa. Gratis verzending in NL &amp; BE.">
+  <meta name="keywords" content="plaids, dekens, bedspreien, picknickkleden, sierkussens, woonplaids, wollen deken, Dekentje">
+  <title>Dekentje.nl — Plaids, Bedspreien &amp; Picknickkleden | Warmte voor Thuis</title>
+  <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
-<!-- ============================================================
-     ICOON-SPRITE - alle iconen inline, geen externe dependency
-     ============================================================ -->
-<svg class="sprite" aria-hidden="true" focusable="false">
-  <symbol id="i-format" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></symbol>
-  <symbol id="i-photo" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></symbol>
-  <symbol id="i-text" viewBox="0 0 24 24"><path d="M4 7V5h16v2M9 5v14M15 19H9"/></symbol>
-  <symbol id="i-brand" viewBox="0 0 24 24"><path d="m16 3 5 5-9 9-5 1 1-5 8-10Z"/><path d="M3 21h8"/></symbol>
-  <symbol id="i-style" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="9" cy="9" r="1.4"/><circle cx="15" cy="9" r="1.4"/><circle cx="9.5" cy="15" r="1.4"/></symbol>
-  <symbol id="i-logo" viewBox="0 0 24 24"><path d="M12 3 4 7v10l8 4 8-4V7l-8-4Z"/><path d="M12 12v9"/><path d="m4 7 8 5 8-5"/></symbol>
-  <symbol id="i-export" viewBox="0 0 24 24"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></symbol>
-  <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 17V5"/><path d="m7 10 5-5 5 5"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></symbol>
-  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 6h16M9 6V4h6v2M7 6l1 14h8l1-14"/></symbol>
-  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></symbol>
-  <symbol id="i-reset" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></symbol>
-  <symbol id="i-check" viewBox="0 0 24 24"><path d="m4 12 5 5L20 6"/></symbol>
-  <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
-  <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z"/><path d="M14 3v5h5"/></symbol>
-  <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3v6M12 15v6M3 12h6M15 12h6"/><path d="m6.5 6.5 3 3M14.5 14.5l3 3M17.5 6.5l-3 3M9.5 14.5l-3 3"/></symbol>
-  <symbol id="i-warn" viewBox="0 0 24 24"><path d="M12 3 2 20h20L12 3Z"/><path d="M12 10v4M12 17.5v.5"/></symbol>
-  <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
-</svg>
-
-<div class="app">
-
-  <!-- ============================================================
-       SIDEBAR - alle bedieningselementen
-       ============================================================ -->
-  <aside class="sidebar">
-    <header class="brandbar">
-      <span class="brandbar__mark" aria-hidden="true"></span>
-      <div class="brandbar__txt">
-        <strong>Post Studio</strong>
-        <span>Instagram post maker</span>
+  <!-- ===== HEADER ===== -->
+  <header class="header" id="header">
+    <nav class="nav container">
+      <a href="#" class="nav-logo" aria-label="Dekentje – terug naar boven">
+        <img src="assets/logo-dekentje-met-tekst.svg" alt="Dekentje">
+      </a>
+      <ul class="nav-links" id="nav-links" role="list">
+        <li><a href="#categories">Plaids &amp; Dekens</a></li>
+        <li><a href="#categories">Bedsprei</a></li>
+        <li><a href="#categories">Picknickkleden</a></li>
+        <li><a href="#about">Onze Merken</a></li>
+        <li><a href="#sale">Laatste kans</a></li>
+      </ul>
+      <div class="nav-actions">
+        <a href="#categories" class="btn btn-primary">Shop nu</a>
       </div>
-    </header>
-
-    <div class="panels" id="panels">
-
-      <!-- ---------- 1. FORMAAT ---------- -->
-      <details class="panel" open>
-        <summary class="panel__head">
-          <svg class="ico" aria-hidden="true"><use href="#i-format"/></svg>
-          <span class="panel__title">Formaat</span>
-          <svg class="ico chev" aria-hidden="true"><use href="#i-chevron"/></svg>
-        </summary>
-        <div class="panel__body">
-          <div class="field">
-            <span class="label">Beeldverhouding</span>
-            <div class="seg seg--3" role="radiogroup" aria-label="Beeldverhouding">
-              <input type="radio" name="ratio" id="ratio-1-1" value="1:1">
-              <label for="ratio-1-1"><b>1:1</b><i>Square</i></label>
-              <input type="radio" name="ratio" id="ratio-4-5" value="4:5" checked>
-              <label for="ratio-4-5"><b>4:5</b><i>Portrait</i></label>
-              <input type="radio" name="ratio" id="ratio-9-16" value="9:16">
-              <label for="ratio-9-16"><b>9:16</b><i>Story</i></label>
-            </div>
-            <p class="hint">Portret 4:5 pakt de meeste ruimte in de feed.</p>
-          </div>
-        </div>
-      </details>
-
-      <!-- ---------- 2. FOTO ---------- -->
-      <details class="panel" open>
-        <summary class="panel__head">
-          <svg class="ico" aria-hidden="true"><use href="#i-photo"/></svg>
-          <span class="panel__title">Foto</span>
-          <svg class="ico chev" aria-hidden="true"><use href="#i-chevron"/></svg>
-        </summary>
-        <div class="panel__body">
-
-          <!-- Dropzone: klik of sleep -->
-          <div class="drop" id="imageDrop" tabindex="0" role="button" aria-label="Foto uploaden of hierheen slepen">
-            <input type="file" id="imageInput" accept="image/*" hidden>
-            <svg class="ico ico--lg" aria-hidden="true"><use href="#i-upload"/></svg>
-            <span class="drop__title">Sleep een foto hierheen</span>
-            <span class="drop__sub">of klik om te bladeren &middot; JPG, PNG, WebP</span>
-          </div>
-
-          <!-- Actieve foto -->
-          <div class="filecard" id="imageCard" hidden>
-            <span class="filecard__thumb" id="imageThumb"></span>
-            <span class="filecard__meta">
-              <b id="imageName">foto.jpg</b>
-              <i id="imageSize">&mdash;</i>
-            </span>
-            <button class="iconbtn" id="imageRemove" type="button" aria-label="Foto verwijderen">
-              <svg class="ico" aria-hidden="true"><use href="#i-trash"/></svg>
-            </button>
-          </div>
-
-          <div class="field">
-            <span class="label">Snelkeuze uit assets</span>
-            <div class="quickpick" id="photoPicks"></div>
-          </div>
-
-          <div class="field">
-            <label class="label" for="overlay">Donkerte <output id="overlayVal">45%</output></label>
-            <input type="range" id="overlay" min="0" max="90" step="1" value="45">
-            <p class="hint">Verhoogt het contrast tussen tekst en foto.</p>
-          </div>
-
-          <div class="field">
-            <label class="label" for="zoom">Beeldzoom <output id="zoomVal">100%</output></label>
-            <input type="range" id="zoom" min="100" max="180" step="1" value="100">
-          </div>
-
-          <div class="field">
-            <span class="label">Uitsnede</span>
-            <div class="seg seg--3" role="radiogroup" aria-label="Uitsnede">
-              <input type="radio" name="focus" id="focus-top" value="top">
-              <label for="focus-top"><b>Boven</b></label>
-              <input type="radio" name="focus" id="focus-center" value="center" checked>
-              <label for="focus-center"><b>Midden</b></label>
-              <input type="radio" name="focus" id="focus-bottom" value="bottom">
-              <label for="focus-bottom"><b>Onder</b></label>
-            </div>
-          </div>
-        </div>
-      </details>
-
-      <!-- ---------- 3. TEKST ---------- -->
-      <details class="panel" open>
-        <summary class="panel__head">
-          <svg class="ico" aria-hidden="true"><use href="#i-text"/></svg>
-          <span class="panel__title">Tekst</span>
-          <svg class="ico chev" aria-hidden="true"><use href="#i-chevron"/></svg>
-        </summary>
-        <div class="panel__body">
-          <!-- Invoermodus: losse velden (standaard) of markdown voor wie dat wil -->
-          <div class="seg seg--2 seg--sm" role="radiogroup" aria-label="Invoermodus">
-            <input type="radio" name="editMode" id="em-fields" value="fields" checked>
-            <label for="em-fields"><b>Velden</b></label>
-            <input type="radio" name="editMode" id="em-md" value="markdown">
-            <label for="em-md"><b>Markdown</b></label>
-          </div>
-
-          <!-- Velden: elk veld is één onderdeel van de post -->
-          <div class="fields" id="fieldsEditor">
-            <div class="field">
-              <label class="label" for="fLabel">Label <i class="label__opt">klein, bovenaan</i></label>
-              <input type="text" id="fLabel" placeholder="Nieuw binnen" maxlength="80" autocomplete="off">
-            </div>
-            <div class="field">
-              <label class="label" for="fTitle">Kop <i class="label__opt">Enter = nieuwe regel</i></label>
-              <textarea id="fTitle" rows="2" placeholder="Warmte die blijft hangen" spellcheck="true"></textarea>
-            </div>
-            <div class="field">
-              <label class="label" for="fBody">Tekst</label>
-              <textarea id="fBody" rows="3" placeholder="Een korte alinea. Zet **sterretjes** om een woord voor nadruk." spellcheck="true"></textarea>
-            </div>
-            <div class="field">
-              <label class="label" for="fList">Opsomming <i class="label__opt">één punt per regel</i></label>
-              <textarea id="fList" rows="2" placeholder="Gratis verzending in NL &amp; BE&#10;Voor 22:00 besteld, vandaag verzonden" spellcheck="true"></textarea>
-            </div>
-            <div class="field">
-              <label class="label" for="fQuote">Citaat</label>
-              <input type="text" id="fQuote" placeholder="Voor 22:00 besteld, vandaag verzonden." maxlength="220" autocomplete="off">
-            </div>
-            <p class="hint">Laat leeg wat je niet nodig hebt. <code>**vet**</code> werkt in elk veld en krijgt de accentkleur.</p>
-          </div>
-
-          <!-- Markdown: de volledige bron, met opmaakknoppen -->
-          <div class="field" id="markdownEditor" hidden>
-            <label class="label" for="content">
-              Markdown
-              <output class="counter" id="charCount">0</output>
-            </label>
-            <div class="mdbar" role="toolbar" aria-label="Opmaak invoegen">
-              <button class="mdbtn" type="button" data-md="h1" title="Kop (regel)">Kop</button>
-              <button class="mdbtn" type="button" data-md="h3" title="Label (regel)">Label</button>
-              <button class="mdbtn" type="button" data-md="bold" title="Vet (selectie)"><b>B</b></button>
-              <button class="mdbtn" type="button" data-md="list" title="Opsomming (regel)">&bull; Lijst</button>
-              <button class="mdbtn" type="button" data-md="quote" title="Citaat (regel)">&ldquo; Citaat</button>
-            </div>
-            <textarea id="content" rows="10" spellcheck="true" placeholder="### Label&#10;# Je koptekst&#10;&#10;Een korte paragraaf met **nadruk**.&#10;&#10;- Kort punt&#10;- Nog een punt&#10;&#10;> Citaat"></textarea>
-            <p class="hint"><code>#</code> kop, <code>###</code> label, <code>**vet**</code>, <code>-</code> lijst, <code>&gt;</code> citaat. Een <code>---</code>-blok bovenin stuurt de vormgeving (zie README).</p>
-          </div>
-
-          <div class="row">
-            <button class="btn btn--ghost btn--sm" id="loadContentMd" type="button">
-              <svg class="ico" aria-hidden="true"><use href="#i-file"/></svg> Tekst uit .md
-            </button>
-            <button class="btn btn--ghost btn--sm" id="loadSample" type="button">
-              <svg class="ico" aria-hidden="true"><use href="#i-spark"/></svg> Voorbeeld
-            </button>
-            <button class="btn btn--ghost btn--sm" id="clearContent" type="button">
-              <svg class="ico" aria-hidden="true"><use href="#i-trash"/></svg> Leeg
-            </button>
-            <input type="file" id="contentMdInput" accept=".md,.markdown,.txt,text/markdown,text/plain" hidden>
-          </div>
-
-          <label class="switch" id="mdToggleWrap" hidden>
-            <input type="checkbox" id="mdToggle" checked>
-            <span class="switch__track"><span class="switch__dot"></span></span>
-            <span class="switch__txt">Markdown-opmaak toepassen</span>
-          </label>
-
-          <label class="switch">
-            <input type="checkbox" id="autoFit" checked>
-            <span class="switch__track"><span class="switch__dot"></span></span>
-            <span class="switch__txt">Automatisch passend schalen</span>
-          </label>
-        </div>
-      </details>
-
-      <!-- ---------- 4. MERKSTIJL UIT MARKDOWN ---------- -->
-      <details class="panel panel--accent" open>
-        <summary class="panel__head">
-          <svg class="ico" aria-hidden="true"><use href="#i-brand"/></svg>
-          <span class="panel__title">Merkstijl uit .md</span>
-          <svg class="ico chev" aria-hidden="true"><use href="#i-chevron"/></svg>
-        </summary>
-        <div class="panel__body">
-          <div class="drop drop--sm" id="mdDrop" tabindex="0" role="button" aria-label="Stijlgids uploaden of hierheen slepen">
-            <input type="file" id="mdInput" accept=".md,.markdown,.txt,text/markdown,text/plain" hidden>
-            <svg class="ico ico--lg" aria-hidden="true"><use href="#i-file"/></svg>
-            <span class="drop__title">Sleep je stijlgids (.md) hierheen</span>
-            <span class="drop__sub">CSS-variabelen, kleurtabellen &amp; fonts worden uitgelezen</span>
-          </div>
-
-          <div class="row">
-            <button class="btn btn--ghost btn--sm" id="loadStyleguide" type="button">
-              <svg class="ico" aria-hidden="true"><use href="#i-brand"/></svg> STYLEGUIDE.md
-            </button>
-            <button class="btn btn--ghost btn--sm" id="brandReset" type="button" hidden>
-              <svg class="ico" aria-hidden="true"><use href="#i-trash"/></svg> Wissen
-            </button>
-          </div>
-
-          <!-- Rapport van wat er uit de markdown is gehaald -->
-          <div class="report" id="brandReport" hidden>
-            <div class="report__head">
-              <svg class="ico" aria-hidden="true"><use href="#i-check"/></svg>
-              <b id="brandFile">stijlgids.md</b>
-            </div>
-            <ul class="chips" id="brandChips"></ul>
-
-            <div class="field">
-              <span class="label">Merkpalet &mdash; klik om toe te passen op:</span>
-              <div class="seg seg--3 seg--sm" role="radiogroup" aria-label="Palettoewijzing">
-                <input type="radio" name="swatchTarget" id="st-accent" value="accent" checked>
-                <label for="st-accent"><b>Accent</b></label>
-                <input type="radio" name="swatchTarget" id="st-text" value="textColor">
-                <label for="st-text"><b>Tekst</b></label>
-                <input type="radio" name="swatchTarget" id="st-panel" value="panelColor">
-                <label for="st-panel"><b>Vlak</b></label>
-              </div>
-              <div class="swatches" id="brandSwatches"></div>
-            </div>
-          </div>
-
-          <p class="hint">Geen stijlgids? Zet bovenin je tekst-<code>.md</code> een frontmatter-blok met <code>accent:</code>, <code>theme:</code>, <code>align:</code> enz. &mdash; zie README.</p>
-        </div>
-      </details>
-
-      <!-- ---------- 5. VORMGEVING ---------- -->
-      <details class="panel" open>
-        <summary class="panel__head">
-          <svg class="ico" aria-hidden="true"><use href="#i-style"/></svg>
-          <span class="panel__title">Vormgeving</span>
-          <svg class="ico chev" aria-hidden="true"><use href="#i-chevron"/></svg>
-        </summary>
-        <div class="panel__body">
-          <div class="field">
-            <span class="label">Sjabloon</span>
-            <div class="themes" role="radiogroup" aria-label="Sjabloon">
-              <input type="radio" name="theme" id="th-minimal" value="minimal">
-              <label for="th-minimal" data-theme="minimal"><span class="themes__art"></span>Minimal</label>
-              <input type="radio" name="theme" id="th-editorial" value="editorial" checked>
-              <label for="th-editorial" data-theme="editorial"><span class="themes__art"></span>Editorial</label>
-              <input type="radio" name="theme" id="th-panel" value="panel">
-              <label for="th-panel" data-theme="panel"><span class="themes__art"></span>Vlak</label>
-              <input type="radio" name="theme" id="th-bold" value="bold">
-              <label for="th-bold" data-theme="bold"><span class="themes__art"></span>Bold</label>
-              <input type="radio" name="theme" id="th-band" value="band">
-              <label for="th-band" data-theme="band"><span class="themes__art"></span>Band</label>
-              <input type="radio" name="theme" id="th-quote" value="quote">
-              <label for="th-quote" data-theme="quote"><span class="themes__art"></span>Quote</label>
-            </div>
-          </div>
-
-          <div class="field">
-            <label class="label" for="font">Lettertype</label>
-            <select id="font"></select>
-          </div>
-
-          <!-- Eigen lettertypen: worden als @font-face ingebed zodat ook de export ze gebruikt -->
-          <div class="field">
-            <span class="label">Eigen lettertype <i class="label__opt">OTF, TTF, WOFF, WOFF2</i></span>
-            <div class="fontrow">
-              <span class="fontrow__slot">Kop</span>
-              <span class="fontrow__name" id="customHeadName">geen</span>
-              <button class="btn btn--ghost btn--sm" id="customHeadBtn" type="button">
-                <svg class="ico" aria-hidden="true"><use href="#i-upload"/></svg> Kies
-              </button>
-              <button class="iconbtn" id="customHeadClear" type="button" aria-label="Kopfont verwijderen" hidden>
-                <svg class="ico" aria-hidden="true"><use href="#i-trash"/></svg>
-              </button>
-            </div>
-            <div class="fontrow">
-              <span class="fontrow__slot">Tekst</span>
-              <span class="fontrow__name" id="customBodyName">geen</span>
-              <button class="btn btn--ghost btn--sm" id="customBodyBtn" type="button">
-                <svg class="ico" aria-hidden="true"><use href="#i-upload"/></svg> Kies
-              </button>
-              <button class="iconbtn" id="customBodyClear" type="button" aria-label="Tekstfont verwijderen" hidden>
-                <svg class="ico" aria-hidden="true"><use href="#i-trash"/></svg>
-              </button>
-            </div>
-            <input type="file" id="customFontInput" accept=".otf,.ttf,.woff,.woff2,font/otf,font/ttf,font/woff,font/woff2" hidden>
-            <p class="hint">Eén font is genoeg: het wordt dan voor kop én tekst gebruikt. Wordt in deze browser onthouden.</p>
-          </div>
-
-          <div class="grid2">
-            <div class="field">
-              <label class="label" for="accent">Accentkleur</label>
-              <span class="colorwrap"><input type="color" id="accent" value="#af1c23"><i id="accentHex">#af1c23</i></span>
-            </div>
-            <div class="field">
-              <label class="label" for="textColor">Tekstkleur</label>
-              <span class="colorwrap"><input type="color" id="textColor" value="#ffffff"><i id="textHex">#ffffff</i></span>
-            </div>
-          </div>
-
-          <div class="field">
-            <span class="label">Uitlijning</span>
-            <div class="seg seg--3" role="radiogroup" aria-label="Tekstuitlijning">
-              <input type="radio" name="align" id="al-left" value="left" checked>
-              <label for="al-left"><b>Links</b></label>
-              <input type="radio" name="align" id="al-center" value="center">
-              <label for="al-center"><b>Midden</b></label>
-              <input type="radio" name="align" id="al-right" value="right">
-              <label for="al-right"><b>Rechts</b></label>
-            </div>
-          </div>
-
-          <div class="field">
-            <span class="label">Positie</span>
-            <div class="seg seg--3" role="radiogroup" aria-label="Verticale positie">
-              <input type="radio" name="valign" id="va-top" value="top">
-              <label for="va-top"><b>Boven</b></label>
-              <input type="radio" name="valign" id="va-middle" value="middle">
-              <label for="va-middle"><b>Midden</b></label>
-              <input type="radio" name="valign" id="va-bottom" value="bottom" checked>
-              <label for="va-bottom"><b>Onder</b></label>
-            </div>
-          </div>
-
-          <div class="grid2">
-            <div class="field">
-              <label class="label" for="textScale">Tekstgrootte <output id="textScaleVal">100%</output></label>
-              <input type="range" id="textScale" min="70" max="145" step="1" value="100">
-            </div>
-            <div class="field">
-              <label class="label" for="padding">Marge <output id="paddingVal">80</output></label>
-              <input type="range" id="padding" min="32" max="160" step="4" value="80">
-            </div>
-          </div>
-
-          <label class="switch">
-            <input type="checkbox" id="sharpCorners" checked>
-            <span class="switch__track"><span class="switch__dot"></span></span>
-            <span class="switch__txt">Strakke rechte hoeken</span>
-          </label>
-        </div>
-      </details>
-
-      <!-- ---------- 6. LOGO & HANDLE ---------- -->
-      <details class="panel">
-        <summary class="panel__head">
-          <svg class="ico" aria-hidden="true"><use href="#i-logo"/></svg>
-          <span class="panel__title">Logo &amp; handle</span>
-          <svg class="ico chev" aria-hidden="true"><use href="#i-chevron"/></svg>
-        </summary>
-        <div class="panel__body">
-          <div class="field">
-            <label class="label" for="badge">Handle / bijschrift</label>
-            <input type="text" id="badge" placeholder="@dekentje.nl" maxlength="40">
-          </div>
-
-          <div class="field">
-            <span class="label">Logo</span>
-            <div class="quickpick quickpick--logo" id="logoPicks"></div>
-            <div class="row">
-              <button class="btn btn--ghost btn--sm" id="logoUploadBtn" type="button">
-                <svg class="ico" aria-hidden="true"><use href="#i-upload"/></svg> Eigen logo
-              </button>
-              <input type="file" id="logoInput" accept="image/*,.svg" hidden>
-            </div>
-          </div>
-
-          <div class="grid2">
-            <div class="field">
-              <label class="label" for="logoSize">Logogrootte <output id="logoSizeVal">120</output></label>
-              <input type="range" id="logoSize" min="60" max="320" step="4" value="120">
-            </div>
-            <div class="field">
-              <label class="label" for="logoPos">Positie</label>
-              <select id="logoPos">
-                <option value="tl">Linksboven</option>
-                <option value="tr">Rechtsboven</option>
-                <option value="bl">Linksonder</option>
-                <option value="br" selected>Rechtsonder</option>
-              </select>
-            </div>
-          </div>
-
-          <label class="switch">
-            <input type="checkbox" id="logoPlate">
-            <span class="switch__track"><span class="switch__dot"></span></span>
-            <span class="switch__txt">Wit vlak achter logo</span>
-          </label>
-        </div>
-      </details>
-
-      <!-- ---------- 7. EXPORT ---------- -->
-      <details class="panel" open>
-        <summary class="panel__head">
-          <svg class="ico" aria-hidden="true"><use href="#i-export"/></svg>
-          <span class="panel__title">Export</span>
-          <svg class="ico chev" aria-hidden="true"><use href="#i-chevron"/></svg>
-        </summary>
-        <div class="panel__body">
-          <div class="grid2">
-            <div class="field">
-              <span class="label">Bestandstype</span>
-              <div class="seg seg--2" role="radiogroup" aria-label="Bestandstype">
-                <input type="radio" name="format" id="fm-png" value="png" checked>
-                <label for="fm-png"><b>PNG</b></label>
-                <input type="radio" name="format" id="fm-jpg" value="jpg">
-                <label for="fm-jpg"><b>JPG</b></label>
-              </div>
-            </div>
-            <div class="field">
-              <label class="label" for="exportScale">Resolutie</label>
-              <select id="exportScale">
-                <option value="1" selected>1&times; &mdash; 1080px</option>
-                <option value="2">2&times; &mdash; 2160px</option>
-              </select>
-            </div>
-          </div>
-
-          <button class="btn btn--primary" id="exportBtn" type="button">
-            <svg class="ico" aria-hidden="true"><use href="#i-export"/></svg>
-            <span>Download post</span>
-          </button>
-
-          <div class="row">
-            <button class="btn btn--ghost btn--sm" id="copyBtn" type="button">
-              <svg class="ico" aria-hidden="true"><use href="#i-copy"/></svg> Kopieer
-            </button>
-            <button class="btn btn--ghost btn--sm" id="resetBtn" type="button">
-              <svg class="ico" aria-hidden="true"><use href="#i-reset"/></svg> Reset
-            </button>
-          </div>
-          <p class="hint">Sneltoets: <kbd>Ctrl</kbd>+<kbd>S</kbd> exporteert direct. Mislukt de export? Open de tool via een lokale server (Live Server) of upload de foto zelf.</p>
-        </div>
-      </details>
-
-    </div>
-  </aside>
-
-  <!-- ============================================================
-       WERKBLAD - live preview
-       ============================================================ -->
-  <main class="workspace">
-    <header class="topbar">
-      <div class="topbar__info">
-        <h1>Live preview</h1>
-        <p id="statusLine">Sleep een foto en tik je tekst &mdash; alles ververst direct.</p>
-      </div>
-      <div class="topbar__meta">
-        <span class="pill" id="dimPill">1080 &times; 1350</span>
-        <span class="pill pill--soft" id="themePill">Editorial</span>
-      </div>
-    </header>
-
-    <!-- Omgevingsmelding: verschijnt bij file:// of een geblokkeerde export -->
-    <div class="notice" id="envNotice" role="alert" hidden>
-      <svg class="ico" aria-hidden="true"><use href="#i-warn"/></svg>
-      <div class="notice__txt">
-        <b id="envNoticeTitle">Let op</b>
-        <span id="envNoticeText"></span>
-      </div>
-      <button class="iconbtn" id="envNoticeClose" type="button" aria-label="Melding sluiten">
-        <svg class="ico" aria-hidden="true"><use href="#i-close"/></svg>
+      <button class="hamburger" id="hamburger" aria-label="Menu openen" aria-expanded="false" aria-controls="nav-links">
+        <span></span>
+        <span></span>
+        <span></span>
       </button>
-    </div>
+    </nav>
+  </header>
 
-    <section class="stage" id="stage">
-      <div class="canvas-shell" id="canvasShell">
-        <!-- Dit element wordt 1-op-1 geexporteerd door html2canvas -->
-        <div class="post-canvas theme-editorial" id="postCanvas">
-          <div class="pc-image" id="pcImage"></div>
-          <div class="pc-overlay" id="pcOverlay"></div>
-          <div class="pc-content" id="pcContent">
-            <div class="pc-body" id="pcBody">
-              <div class="pc-flow" id="pcFlow"></div>
-            </div>
-          </div>
-          <div class="pc-badge" id="pcBadge" hidden></div>
-          <img class="pc-logo" id="pcLogo" alt="" hidden>
+  <main>
 
-          <!-- Empty state: alleen zichtbaar zonder foto -->
-          <div class="pc-empty" id="pcEmpty">
-            <svg class="ico ico--xl" aria-hidden="true"><use href="#i-photo"/></svg>
-            <b>Nog geen foto</b>
-            <span>Sleep een afbeelding hierheen of kies er een in de sidebar</span>
+    <!-- ===== HERO ===== -->
+    <section class="hero" aria-label="Welkom bij Dekentje">
+      <div class="hero-content-wrap">
+        <div class="hero-content">
+          <span class="eyebrow">Duurzaam gemaakt in Europa</span>
+          <h1>Ervaar het<br><span class="accent">comfort</span><br>van Dekentje.</h1>
+          <p class="hero-sub">Op Dekentje.nl vind je de mooiste, gezelligste en warmste dekentjes voor jouw huis. Maak van jouw huis een thuis en kies jouw favoriete deken!</p>
+          <div class="hero-cta">
+            <a href="#categories" class="btn btn-primary">Bekijk ons aanbod</a>
+            <a href="#about" class="btn btn-ghost">Ons verhaal</a>
           </div>
         </div>
       </div>
-      <div class="stage__drophint" id="stageDropHint">
-        <svg class="ico ico--xl" aria-hidden="true"><use href="#i-upload"/></svg>
-        <b>Laat los</b>
-        <span>Afbeelding wordt de achtergrond &middot; .md wordt de stijl</span>
+      <div class="hero-visual">
+          <img src="assets/Hero-section-foto.jpg" alt="Sfeervolle plaids en dekentjes van Dekentje" class="hero-photo">
+          <div class="hero-tag">
+            <span class="hero-tag-label">Gratis verzending</span>
+            <span class="hero-tag-value">in NL &amp; BE</span>
+          </div>
+        </div>
+    </section>
+
+    <!-- ===== MARQUEE ===== -->
+    <div class="marquee-wrap" aria-hidden="true">
+      <div class="marquee-track">
+        <span>Gratis verzending in NL &amp; BE</span><span class="sep">·</span>
+        <span>Voor 22:00 besteld = vandaag verzonden</span><span class="sep">·</span>
+        <span>Uniek duurzaam assortiment</span><span class="sep">·</span>
+        <span>Europese merken &amp; natuurlijke materialen</span><span class="sep">·</span>
+        <span>Laatste kans items in de sale</span><span class="sep">·</span>
+        <span>Gratis verzending in NL &amp; BE</span><span class="sep">·</span>
+        <span>Voor 22:00 besteld = vandaag verzonden</span><span class="sep">·</span>
+        <span>Uniek duurzaam assortiment</span><span class="sep">·</span>
+        <span>Europese merken &amp; natuurlijke materialen</span><span class="sep">·</span>
+        <span>Laatste kans items in de sale</span><span class="sep">·</span>
+        <span>Gratis verzending in NL &amp; BE</span><span class="sep">·</span>
+        <span>Voor 22:00 besteld = vandaag verzonden</span><span class="sep">·</span>
+        <span>Uniek duurzaam assortiment</span><span class="sep">·</span>
+        <span>Europese merken &amp; natuurlijke materialen</span><span class="sep">·</span>
+        <span>Laatste kans items in de sale</span><span class="sep">·</span>
+      </div>
+    </div>
+
+    <!-- ===== CATEGORIES ===== -->
+    <section id="categories" class="section categories">
+      <div class="container">
+        <div class="section-header">
+          <span class="eyebrow">Wat we verkopen</span>
+          <h2>Onze collectie</h2>
+          <p>Van de bank tot de tuin — ontdek alles wat Dekentje te bieden heeft.</p>
+        </div>
+        <div class="categories-grid">
+
+          <a class="category-card fade-in" href="#" aria-label="Bekijk onze plaids en dekens">
+            <div class="category-img">
+              <img src="assets/Logo-plaids.svg" alt="Plaids en dekens categorie logo">
+            </div>
+            <div class="category-body">
+              <h3>Plaids &amp; Dekens</h3>
+              <p>Van zachte wollen plaids tot fleece dekens — voor elke kamer en elk seizoen.</p>
+              <span class="card-cta" aria-hidden="true">Bekijk plaids &amp; dekens →</span>
+            </div>
+          </a>
+
+          <a class="category-card fade-in" href="#" aria-label="Bekijk onze sierkussens">
+            <div class="category-img">
+              <img src="assets/Logo-sierkussens.svg" alt="Sierkussens categorie logo">
+            </div>
+            <div class="category-body">
+              <h3>Sierkussens</h3>
+              <p>Stijlvolle sierkussens die elke woonkamer of slaapkamer compleet maken.</p>
+              <span class="card-cta" aria-hidden="true">Bekijk sierkussens →</span>
+            </div>
+          </a>
+
+          <a class="category-card fade-in" href="#" aria-label="Bekijk onze bedspreien">
+            <div class="category-img">
+              <img src="assets/Logo-bedsprei.svg" alt="Bedsprei categorie logo">
+            </div>
+            <div class="category-body">
+              <h3>Bedspreien</h3>
+              <p>Luxe bedspreien in verschillende kleuren en texturen voor elke slaapkamer.</p>
+              <span class="card-cta" aria-hidden="true">Bekijk bedspreien →</span>
+            </div>
+          </a>
+
+          <a class="category-card fade-in" href="#" aria-label="Bekijk onze picknickkleden">
+            <div class="category-img">
+              <img src="assets/Logo-Picknickkleden.svg" alt="Picknickkleden categorie logo">
+            </div>
+            <div class="category-body">
+              <h3>Picknickkleden</h3>
+              <p>Robuuste en sfeervolle picknickkleden voor buiten, in alle seizoenen.</p>
+              <span class="card-cta" aria-hidden="true">Bekijk picknickkleden →</span>
+            </div>
+          </a>
+
+        </div>
       </div>
     </section>
 
-    <footer class="statusbar">
-      <span><b id="wordCount">0</b> woorden</span>
-      <span class="sep"></span>
-      <span id="fitInfo">Schaal 100%</span>
-      <span class="sep"></span>
-      <span id="brandInfo">Geen stijlgids geladen</span>
-    </footer>
+    <!-- ===== SALE BANNER ===== -->
+    <section id="sale" class="sale-banner" aria-label="Tijdelijke sale aanbieding">
+      <div class="container sale-inner fade-in">
+        <div class="sale-content">
+          <span class="eyebrow eyebrow--light">Laatste kans</span>
+          <h2>Sale — zolang de voorraad strekt.</h2>
+          <p>Profiteer nu van onze scherpste prijzen op een selectie plaids, bedspreien en meer.</p>
+        </div>
+        <a href="#" class="btn btn-sale">Bekijk sale</a>
+      </div>
+    </section>
+
+    <!-- ===== USP ===== -->
+    <section class="section usp" aria-label="Onze voordelen">
+      <div class="container">
+        <div class="usp-grid">
+
+          <div class="usp-item fade-in">
+            <div class="usp-icon" aria-hidden="true">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="1" y="3" width="15" height="13" rx="0"></rect>
+                <path d="M16 8h4l3 5v3h-7V8z"></path>
+                <circle cx="5.5" cy="18.5" r="2.5"></circle>
+                <circle cx="18.5" cy="18.5" r="2.5"></circle>
+              </svg>
+            </div>
+            <h4>Gratis verzending</h4>
+            <p>In Nederland en België</p>
+          </div>
+
+          <div class="usp-item fade-in">
+            <div class="usp-icon" aria-hidden="true">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 12 20 22 4 22 4 12"></polyline>
+                <rect x="2" y="7" width="20" height="5"></rect>
+                <line x1="12" y1="22" x2="12" y2="7"></line>
+                <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"></path>
+                <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"></path>
+              </svg>
+            </div>
+            <h4>Voor 22:00 besteld</h4>
+            <p>Vandaag nog verzonden</p>
+          </div>
+
+          <div class="usp-item fade-in">
+            <div class="usp-icon" aria-hidden="true">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="1 4 1 10 7 10"></polyline>
+                <path d="M3.51 15a9 9 0 1 0 .49-4.54L1 10"></path>
+              </svg>
+            </div>
+            <h4>30 dagen retour</h4>
+            <p>Niet tevreden? Geld terug.</p>
+          </div>
+
+          <div class="usp-item fade-in">
+            <div class="usp-icon" aria-hidden="true">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+              </svg>
+            </div>
+            <h4>Veilig betalen</h4>
+            <p>Alle gangbare betaalmethoden</p>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== ABOUT ===== -->
+    <section id="about" class="section about">
+      <div class="container about-inner">
+
+        <div class="about-visual fade-in">
+          <div class="about-card">
+            <img src="assets/Duurzame-kwaliteit-foto-bedsprei.jpg" alt="Duurzame kwaliteit bedsprei, gemaakt in Europa">
+          </div>
+          <div class="about-stat about-stat--offset">
+            <span class="stat-num">100%</span>
+            <span class="stat-label">Kwaliteitsgarantie</span>
+          </div>
+        </div>
+
+        <div class="about-content fade-in">
+          <span class="eyebrow">Ons verhaal</span>
+          <h2>Duurzame kwaliteit, <span class="accent">gemaakt in Europa</span>.</h2>
+          <p>Dekentje.nl is opgezet voor alle thuis-liefhebbers. We streven ernaar om het mooiste assortiment dekentjes op onze website bij elkaar te brengen.</p>
+          <p>Kwaliteit en duurzaamheid vinden wij belangrijk, daarom kiezen we voor Europese merken, natuurlijke materialen en tijdloze ontwerpen.</p>
+          <div class="about-actions">
+            <a href="#categories" class="btn btn-primary">Ontdek de collectie</a>
+            <a href="#contact" class="btn btn-ghost">Neem contact op</a>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ===== NEWSLETTER ===== -->
+    <section class="section newsletter">
+      <div class="container">
+        <div class="newsletter-inner fade-in">
+          <div class="newsletter-content">
+            <span class="eyebrow">Blijf op de hoogte</span>
+            <h2>Mis niets van Dekentje.</h2>
+            <p>Ontvang als eerste nieuws over nieuwe collecties, exclusieve aanbiedingen en inspiratie voor jouw interieur.</p>
+          </div>
+          <form class="newsletter-form" id="newsletter-form" novalidate aria-label="Nieuwsbrief aanmelding">
+            <div class="form-row">
+              <label for="newsletter-email" class="sr-only">E-mailadres</label>
+              <input
+                type="email"
+                id="newsletter-email"
+                name="email"
+                placeholder="Jouw e-mailadres"
+                required
+                autocomplete="email"
+                aria-required="true"
+              >
+              <button type="submit" class="btn btn-primary">Aanmelden</button>
+            </div>
+            <p class="form-note" id="form-message">We respecteren jouw privacy. Geen spam, altijd uitschrijven mogelijk.</p>
+          </form>
+        </div>
+      </div>
+    </section>
+
   </main>
-</div>
 
-<div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <!-- ===== FOOTER ===== -->
+  <footer id="contact" class="footer">
+    <div class="container footer-grid">
 
-<!-- Libraries: markdown-parsing + canvas-export (met eigen fallback in js/markdown.js) -->
-<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js" defer></script>
-<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" defer></script>
+      <div class="footer-brand">
+        <img src="assets/logo-dekentje-met-tekst.svg" alt="Dekentje" class="footer-logo">
+        <p>Dekentje.nl is opgezet voor alle thuis-liefhebbers. We streven ernaar om het mooiste assortiment dekentjes bij elkaar te brengen — van Europese merken, met natuurlijke materialen.</p>
+        <div class="footer-social" aria-label="Volg ons op social media">
+          <a href="#" aria-label="Volg Dekentje op Instagram">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="2" width="20" height="20" rx="5"></rect>
+              <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+              <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+            </svg>
+          </a>
+          <a href="#" aria-label="Volg Dekentje op Facebook">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path>
+            </svg>
+          </a>
+          <a href="#" aria-label="Volg Dekentje op Pinterest">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 0C5.373 0 0 5.373 0 12c0 5.084 3.163 9.426 7.627 11.174-.105-.949-.2-2.405.042-3.441.218-.937 1.407-5.965 1.407-5.965s-.359-.719-.359-1.782c0-1.668.967-2.914 2.171-2.914 1.023 0 1.518.769 1.518 1.69 0 1.029-.655 2.568-.994 3.995-.283 1.194.599 2.169 1.777 2.169 2.133 0 3.772-2.249 3.772-5.495 0-2.873-2.064-4.882-5.012-4.882-3.414 0-5.418 2.561-5.418 5.207 0 1.031.397 2.138.893 2.738a.36.36 0 0 1 .083.345l-.333 1.36c-.053.22-.174.267-.402.161-1.499-.698-2.436-2.889-2.436-4.649 0-3.785 2.75-7.262 7.929-7.262 4.163 0 7.398 2.967 7.398 6.931 0 4.136-2.607 7.464-6.227 7.464-1.216 0-2.359-.632-2.75-1.378l-.748 2.853c-.271 1.043-1.002 2.35-1.492 3.146C9.57 23.812 10.763 24 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0z"/>
+            </svg>
+          </a>
+        </div>
+      </div>
 
-<!-- Eigen modules -->
-<script src="js/markdown.js" defer></script>
-<script src="js/brandkit.js" defer></script>
-<script src="js/app.js" defer></script>
+      <div class="footer-col">
+        <h5>Ons aanbod</h5>
+        <ul role="list">
+          <li><a href="#">Plaids &amp; Dekens</a></li>
+          <li><a href="#">Bedsprei</a></li>
+          <li><a href="#">Picknickkleden</a></li>
+          <li><a href="#">Sierkussens</a></li>
+          <li><a href="#">Onze Merken</a></li>
+          <li><a href="#sale" class="sale-link">Laatste kans</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h5>Klantenservice</h5>
+        <ul role="list">
+          <li><a href="#">Betalen</a></li>
+          <li><a href="#">Garantie</a></li>
+          <li><a href="#">Verzending &amp; retourneren</a></li>
+          <li><a href="#">Mijn bestelling</a></li>
+          <li><a href="#">Advies &amp; inspiratie</a></li>
+          <li><a href="#">Relatiegeschenken</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h5>Over ons</h5>
+        <ul role="list">
+          <li><a href="#about">Ons verhaal</a></li>
+          <li><a href="#">Reviews</a></li>
+          <li><a href="#">Contact</a></li>
+          <li><a href="mailto:info@dekentje.nl">info@dekentje.nl</a></li>
+          <li><a href="#">Instagram &amp; Facebook</a></li>
+          <li><a href="#">Gebruik #dekentje.nl</a></li>
+        </ul>
+      </div>
+
+    </div>
+
+    <div class="footer-bottom">
+      <div class="container footer-bottom-inner">
+        <p>&copy; 2022–2026 Dekentje.nl &nbsp;|&nbsp; KvK: 63427036 &nbsp;|&nbsp; BTW: NL855231142B01</p>
+        <nav class="footer-legal" aria-label="Juridische links">
+          <a href="#">Privacybeleid</a>
+          <a href="#">Algemene voorwaarden</a>
+        </nav>
+      </div>
+    </div>
+  </footer>
+
+  <script src="js/main.js"></script>
 </body>
 </html>

@@ -1,0 +1,14 @@
+Brand kleuren van Dekentje: 
+Normale H tekst / koppen: #606556
+Font voor H tekst: Built Titling Regular
+P tekst / gewone tekst: :2c2c30
+Font voor P tekst: Circular Std Book
+Font voor P tekst als iets eruit moet springen: Circular Std Bold
+Bijzonder koptekst / H tekst krijgt deze kleur: #af1c23
+
+Achtergrond kleur website: #fdfdfd
+Vlakken waar iets in komt te staan (bijvoorbeeld tekst over product of product carousel): #f3f3f3
+
+Sale kleur: #ab552b
+
+Strakke rechte hoeken gebruiken voor knoppen met genoeg padding etc. 
