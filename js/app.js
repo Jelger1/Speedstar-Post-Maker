@@ -128,6 +128,7 @@
     dimPill: $('dimPill'), themePill: $('themePill'), statusLine: $('statusLine'),
     fitInfo: $('fitInfo'), toast: $('toast'),
     exportBtn: $('exportBtn'), copyBtn: $('copyBtn'),
+    mobileNav: $('mobileNav'), mobileBar: $('mobileBar'), mobileExport: $('mobileExport'), mobileCopy: $('mobileCopy'), mobileAi: $('mobileAi'),
     aiBrief: $('aiBrief'), aiGenerate: $('aiGenerate'), aiImprove: $('aiImprove'), aiCheck: $('aiCheck'),
     aiResults: $('aiResults'), aiNotes: $('aiNotes'), aiContext: $('aiContext'),
     aiEndpoint: $('aiEndpoint'), aiCode: $('aiCode'), aiStatus: $('aiStatus'), aiDot: $('aiDot'), aiInfo: $('aiInfo'),
@@ -318,9 +319,7 @@
     var padY = (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0);
 
     var availW = Math.max(160, box.width - padX);
-    var availH = STACKED.matches
-      ? Math.max(240, window.innerHeight * 0.62)      // gestapeld: hoogte volgt de inhoud
-      : Math.max(160, box.height - padY);
+    var availH = Math.max(140, box.height - padY);   // op mobiel heeft .stage een vaste hoogte (CSS)
 
     var step = r.w / gcd(r.w, r.h);
     var w = Math.min(availW, availH * (r.w / r.h), 760);
@@ -1823,6 +1822,97 @@
   }
 
   /* ===========================================================================
+     6b. MOBIEL: TABS, ACTIEBALK, COMPACTE PREVIEW TIJDENS TYPEN
+     -----------------------------------------------------------------------
+     Op smalle schermen staat de preview vast bovenin en werkt de bediening
+     als accordeon: tabs onder de preview openen één paneel tegelijk. De
+     actiebalk onderaan houdt Download/Kopieer altijd binnen duimbereik.
+     ========================================================================= */
+  function panelTitle(panel) {
+    var t = panel.querySelector('.panel__title');
+    return t ? t.textContent.trim() : '';
+  }
+
+  function allPanels() {
+    return Array.prototype.slice.call(document.querySelectorAll('details.panel'));
+  }
+
+  function openPanel(panel, scroll) {
+    if (!panel) return;
+    if (STACKED.matches) allPanels().forEach(function (p) { if (p !== panel) p.open = false; });
+    panel.open = true;
+    updateMobileNav();
+    if (scroll) {
+      var header = document.querySelector('.workspace');
+      var top = panel.getBoundingClientRect().top + window.pageYOffset - (header ? header.getBoundingClientRect().height : 0) - 4;
+      window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+    }
+  }
+
+  function updateMobileNav() {
+    if (!el.mobileNav) return;
+    var openTitle = '';
+    allPanels().some(function (p) { if (p.open) { openTitle = panelTitle(p); return true; } return false; });
+    Array.prototype.forEach.call(el.mobileNav.children, function (btn) {
+      var active = btn.dataset.panel === openTitle;
+      btn.classList.toggle('is-active', active);
+      if (active && btn.scrollIntoView) { try { btn.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' }); } catch (err) { /* oud */ } }
+    });
+  }
+
+  function buildMobileNav() {
+    if (!el.mobileNav) return;
+    el.mobileNav.innerHTML = '';
+    allPanels().forEach(function (panel) {
+      var title = panelTitle(panel);
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.dataset.panel = title;
+      var icon = panel.querySelector('.panel__head .ico');
+      if (icon) btn.appendChild(icon.cloneNode(true));
+      btn.appendChild(document.createTextNode(title.replace('Merkstijl uit .md', 'Merkstijl').replace('Logo & handle', 'Logo').replace('AI-assistent', 'AI')));
+      btn.addEventListener('click', function () { openPanel(panel, true); });
+      el.mobileNav.appendChild(btn);
+      panel.addEventListener('toggle', updateMobileNav);
+    });
+    updateMobileNav();
+  }
+
+  /* Eerste indruk op een telefoon: alleen Tekst open, de rest via de tabs */
+  function applyMobileLayout() {
+    if (!STACKED.matches) return;
+    var opened = false;
+    allPanels().forEach(function (p) {
+      var isText = panelTitle(p) === 'Tekst';
+      p.open = isText && !opened;
+      if (isText) opened = true;
+    });
+    updateMobileNav();
+  }
+
+  function bindMobile() {
+    buildMobileNav();
+    applyMobileLayout();
+
+    // Toetsenbord open: preview compacter zodat veld én tekst zichtbaar blijven
+    var sidebar = document.querySelector('.sidebar');
+    function typing(on) { document.body.classList.toggle('is-typing', on && STACKED.matches); }
+    on(sidebar, 'focusin', function (e) { if (/^(INPUT|TEXTAREA)$/.test(e.target.tagName) && !/^(range|checkbox|radio|color|file)$/.test(e.target.type)) typing(true); });
+    on(sidebar, 'focusout', function () { setTimeout(function () { var a = document.activeElement; if (!a || !/^(INPUT|TEXTAREA)$/.test(a.tagName) || /^(range|checkbox|radio|color|file)$/.test(a.type)) typing(false); }, 60); });
+
+    on(el.mobileExport, 'click', function () { exportImage('download'); });
+    on(el.mobileCopy, 'click', function () { exportImage('clipboard'); });
+    on(el.mobileAi, 'click', function () {
+      openPanel($('aiPanel'), true);
+      setTimeout(function () { if (el.aiBrief) el.aiBrief.focus(); }, 350);
+    });
+
+    var mq = function () { if (!STACKED.matches) document.body.classList.remove('is-typing'); applyMobileLayout(); };
+    if (typeof STACKED.addEventListener === 'function') STACKED.addEventListener('change', mq);
+    else if (typeof STACKED.addListener === 'function') STACKED.addListener(mq);
+  }
+
+  /* ===========================================================================
      8. EVENTS
      ========================================================================= */
   function on(node, ev, fn) { if (node) node.addEventListener(ev, fn); }
@@ -2219,6 +2309,8 @@
     exporting = busy;
     el.exportBtn.disabled = busy;
     el.copyBtn.disabled = busy;
+    if (el.mobileExport) { el.mobileExport.disabled = busy; el.mobileExport.querySelector('span').textContent = busy ? 'Bezig…' : 'Download'; }
+    if (el.mobileCopy) el.mobileCopy.disabled = busy;
     document.body.classList.toggle('is-exporting', busy);
     var label = el.exportBtn.querySelector('span');
     if (busy) {
@@ -2328,6 +2420,7 @@
     fillFields();
     showImageCard(0);
     bindEvents();
+    bindMobile();
     safeRender();
 
     // Foto, logo, stijlgids en eigen fonts terugzetten na een herlaadbeurt

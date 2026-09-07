@@ -2,7 +2,7 @@
 <html lang="nl">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Post Studio — Instagram Post Maker</title>
 <meta name="description" content="Maak Instagram-posts uit een foto, je eigen tekst en een markdown-stijlgids. Live preview, export naar PNG/JPG.">
 
@@ -540,7 +540,7 @@
               <svg class="ico" aria-hidden="true"><use href="#i-reset"/></svg> Reset
             </button>
           </div>
-          <p class="hint">Sneltoets: <kbd>Ctrl</kbd>+<kbd>S</kbd> exporteert direct. Mislukt de export? Open de tool via een lokale server (Live Server) of upload de foto zelf.</p>
+          <p class="hint hint--desktop">Sneltoets: <kbd>Ctrl</kbd>+<kbd>S</kbd> exporteert direct. Mislukt de export? Open de tool via een lokale server (Live Server) of upload de foto zelf.</p>
         </div>
       </details>
 
@@ -603,6 +603,9 @@
       </div>
     </section>
 
+    <!-- Alleen op smalle schermen: tabs die naar een paneel springen (gevuld door app.js) -->
+    <nav class="mobile-nav" id="mobileNav" aria-label="Onderdelen"></nav>
+
     <footer class="statusbar">
       <span><b id="wordCount">0</b> woorden</span>
       <span class="sep"></span>
@@ -613,6 +616,19 @@
       <span id="aiInfo">AI: niet verbonden</span>
     </footer>
   </main>
+</div>
+
+<!-- Alleen op smalle schermen: vaste actiebalk onderaan -->
+<div class="mobilebar" id="mobileBar">
+  <button class="btn btn--ghost" id="mobileAi" type="button" aria-label="AI-assistent">
+    <svg class="ico" aria-hidden="true"><use href="#i-ai"/></svg> AI
+  </button>
+  <button class="btn btn--ghost" id="mobileCopy" type="button" aria-label="Kopieer post">
+    <svg class="ico" aria-hidden="true"><use href="#i-copy"/></svg> Kopieer
+  </button>
+  <button class="btn btn--primary" id="mobileExport" type="button">
+    <svg class="ico" aria-hidden="true"><use href="#i-export"/></svg> <span>Download</span>
+  </button>
 </div>
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>

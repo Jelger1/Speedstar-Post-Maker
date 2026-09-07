@@ -1205,18 +1205,106 @@ input[type="color"]::-moz-color-swatch { border: 1px solid rgba(255,255,255,.16)
   .topbar, .statusbar { padding-inline: 18px; }
 }
 
+/* Desktop: mobiele elementen bestaan wel, maar zijn onzichtbaar */
+.mobile-nav, .mobilebar { display: none; }
+
 @media (max-width: 860px) {
-  body { overflow: auto; }
+  body { overflow: auto; -webkit-text-size-adjust: 100%; }
   .app { grid-template-columns: 1fr; height: auto; min-height: 100dvh; }
 
-  /* Preview eerst, bediening eronder */
-  .workspace { order: -1; position: sticky; top: 0; z-index: 10; background: var(--bg); }
-  .stage { padding: 16px; min-height: 46vh; }
-  .notice { margin: 12px 16px 0; }
-  .sidebar { border-right: none; border-top: 1px solid var(--line-soft); }
+  /* --- Preview bovenin, blijft staan tijdens scrollen --- */
+  .workspace {
+    order: -1;
+    position: sticky; top: 0; z-index: 10;
+    background: var(--bg);
+    border-bottom: 1px solid var(--line-soft);
+    box-shadow: 0 10px 30px -18px rgba(0,0,0,.9);
+  }
+  .topbar, .statusbar, .stage__drophint, .hint--desktop { display: none; }
+  .notice { margin: 8px 12px 0; padding: 9px 11px; font-size: 12px; }
+
+  /* Vaste hoogte: geen meetlus met de inhoud eronder. Tijdens typen kleiner,
+     zodat het toetsenbord en het veld samen op het scherm passen. */
+  .stage { flex: none; height: 40vh; height: 40dvh; min-height: 220px; padding: 10px 12px 8px; transition: height .22s var(--ease); }
+  body.is-typing .stage { height: 26vh; height: 26dvh; min-height: 150px; }
+  .canvas-shell { box-shadow: var(--shadow-md), 0 0 0 1px rgba(255,255,255,.07); }
+  .is-exporting .canvas-shell::after { border-radius: 0; }
+
+  /* --- Tabs onder de preview --- */
+  .mobile-nav {
+    display: flex;
+    gap: 6px;
+    padding: 6px 12px 10px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .mobile-nav::-webkit-scrollbar { display: none; }
+  .mobile-nav button {
+    display: inline-flex; align-items: center; gap: 6px;
+    flex: none;
+    min-height: 36px;
+    padding: 0 12px;
+    border: 1px solid var(--line);
+    border-radius: 99px;
+    background: var(--surface-2);
+    color: var(--text-dim);
+    font-size: 12.5px; font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+  .mobile-nav button .ico { width: 15px; height: 15px; }
+  .mobile-nav button.is-active { background: var(--brand); border-color: var(--brand); color: #fff; }
+
+  /* --- Bediening --- */
+  .sidebar { border-right: none; border-top: none; padding-bottom: calc(84px + env(safe-area-inset-bottom)); }
   .panels { overflow: visible; }
-  .topbar__info p { display: none; }
-  .statusbar { display: none; }
+  .panel__head { padding: 15px 16px; }
+  .panel__body { padding: 2px 16px 20px; gap: 14px; }
+  details.panel { scroll-margin-top: 4px; }
+
+  /* Vingers in plaats van muizen: grotere doelen, geen iOS-zoom op velden */
+  textarea, input[type="text"], input[type="search"], input[type="password"], select, .fontlib__search { font-size: 16px; padding: 11px 12px; }
+  .fields textarea { font-size: 16px; }
+  .btn { min-height: 44px; padding: 10px 14px; font-size: 14px; }
+  .btn--sm { min-height: 40px; font-size: 13px; }
+  .iconbtn { width: 40px; height: 40px; }
+  .seg label { padding: 10px 4px; min-height: 40px; }
+  .seg label b { font-size: 13px; }
+  .themes label { padding: 8px; font-size: 11.5px; }
+  .switch { min-height: 40px; }
+  .switch__txt { font-size: 14px; }
+  .label { font-size: 13px; }
+  .hint { font-size: 12px; }
+  input[type="range"] { height: 32px; }
+  input[type="range"]::-webkit-slider-thumb { width: 24px; height: 24px; margin-top: -10px; }
+  input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; }
+  input[type="color"] { width: 40px; height: 36px; }
+  .quickpick, .grid2 { gap: 12px; }
+  .drop { padding: 18px 12px; }
+  .fontlib__list { max-height: 220px; }
+  .fontrow { padding: 10px 8px 10px 12px; }
+  .fontrow__pick { padding: 8px 10px; font-size: 12px; }
+  .swatches button { width: 40px; height: 40px; }
+  .swatches button::after { display: none; }   /* hover-tooltips bestaan niet op touch */
+  .mdbtn { padding: 8px 11px; font-size: 13px; }
+  .ai-card .btn { min-height: 38px; }
+
+  /* --- Vaste actiebalk onderaan --- */
+  .mobilebar {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+    display: flex; gap: 8px;
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+    background: rgba(17,20,27,.96);
+    border-top: 1px solid var(--line);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+  .mobilebar .btn { min-height: 46px; }
+  .mobilebar .btn--ghost { flex: 0 0 auto; padding-inline: 12px; }
+  .mobilebar .btn--primary { flex: 1; width: auto; }
+
+  .toast { bottom: calc(84px + env(safe-area-inset-bottom)); max-width: calc(100vw - 24px); border-radius: 14px; padding: 11px 14px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
