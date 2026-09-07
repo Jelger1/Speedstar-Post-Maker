@@ -8,6 +8,8 @@ npm-debug.log*
 *.env
 !.env.example
 
-# Commerciële lettertypen (Built Titling, Circular Std) mogen niet zomaar
-# publiek verspreid worden; de tool gebruikt ze niet meer.
-assets/fonts/
+# Fontbibliotheek: alleen formaten die browsers via @font-face laden
+assets/fonts/*.fon
+assets/fonts/*.FON
+assets/fonts/*.ttc
+assets/fonts/*.TTC

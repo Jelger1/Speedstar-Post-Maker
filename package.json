@@ -6,7 +6,9 @@
   "main": "server/server.js",
   "scripts": {
     "start": "node server/server.js",
-    "dev": "node server/server.js"
+    "dev": "node server/server.js",
+    "fonts": "node scripts/build-font-index.js",
+    "build": "node scripts/build-font-index.js"
   },
   "engines": {
     "node": ">=18.17"

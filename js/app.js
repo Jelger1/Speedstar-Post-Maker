@@ -74,7 +74,7 @@
     overlayRgb: '0, 0, 0',
     align: 'left', valign: 'bottom',
     textScale: 100, padding: 80, sharp: true,
-    badge: '', logo: '', logoName: '', logoSize: 120, logoPos: 'br', logoPlate: true,
+    badge: '', logo: '', logoName: '', logoSize: 120, logoPos: 'br', logoPlate: true, logoTint: 'none',
     format: 'png', exportScale: '1',
     aiEndpoint: '', aiCode: ''
   };
@@ -121,7 +121,7 @@
     brandFile: $('brandFile'), brandReset: $('brandReset'), brandInfo: $('brandInfo'),
     font: $('font'), accent: $('accent'), accentHex: $('accentHex'),
     textColor: $('textColor'), textHex: $('textHex'),
-    customFontInput: $('customFontInput'),
+    customFontInput: $('customFontInput'), fontSearch: $('fontSearch'),
     customHeadName: $('customHeadName'), customBodyName: $('customBodyName'),
     customHeadClear: $('customHeadClear'), customBodyClear: $('customBodyClear'),
     logoInput: $('logoInput'), logoName: $('logoName'), logoClear: $('logoClear'),
@@ -441,6 +441,7 @@
     setRadio('valign', state.valign);
     setRadio('format', state.format);
     setRadio('editMode', state.editMode);
+    setRadio('logoTint', state.logoTint);
 
     setVal($('overlay'), state.overlay);
     setVal($('zoom'), state.zoom);
@@ -643,6 +644,12 @@
           else ok = false;
           break;
 
+        case 'logocolor': case 'logokleur': case 'logotint':
+          tmp = String(value).toLowerCase().trim();
+          tmp = { wit: 'white', white: 'white', licht: 'white', zwart: 'black', black: 'black', donker: 'black',
+                  origineel: 'none', original: 'none', none: 'none', geen: 'none', kleur: 'none' }[tmp];
+          if (tmp) { if (state.logoTint !== tmp) { state.logoTint = tmp; applyLogoTint(); } } else ok = false; break;
+
         case 'logosize': case 'logogrootte':
           tmp = parseInt(value, 10);
           if (!isNaN(tmp)) state.logoSize = clamp(tmp, 60, 320); else ok = false; break;
@@ -787,36 +794,218 @@
   }
 
   /* ===========================================================================
-     6. EIGEN LETTERTYPEN
+     6. LETTERTYPEN: BIBLIOTHEEK + EIGEN UPLOAD
      -----------------------------------------------------------------------
-     Een geüpload font wordt als @font-face met data-URL in een <style> gezet.
-     Dat is bewust geen FontFace-API: html2canvas kloont het document met zijn
-     stylesheets, en alleen zo komt het font ook in de export terecht.
+     Twee bronnen, één mechanisme. Een font wordt als @font-face in een <style>
+     gezet (geen FontFace-API: html2canvas kloont het document met zijn
+     stylesheets, en alleen zo komt het font ook in de export terecht).
+
+       - bibliotheek: assets/fonts/index.json (gemaakt door
+         scripts/build-font-index.js) beschrijft elk bestand: familie, stijl,
+         gewicht, italic. Alle stijlen van een familie worden geregistreerd,
+         dus **vet** en cursief renderen met de echte snedes.
+       - upload: één bestand als data-URL, bewaard in IndexedDB.
+
+     Een slot (kop/tekst) bevat { kind: 'lib', family } of
+     { kind: 'file', name, dataUrl, format }. Een stijlgids die een familie
+     noemt die in de bibliotheek zit, krijgt die automatisch.
      ========================================================================= */
+  var fontLib = { loaded: false, failed: false, families: [], fonts: [], byKey: {} };
+  var fontsRestored = false;
+  var logoBase = '';                     // origineel logo (PNG data-URL); state.logo is de getinte versie
+  var logoTintSeq = 0;             // slots uit IndexedDB gelezen? (voorkomt een race met de bibliotheek)
+  var MAX_PREVIEW_BYTES = 3 * 1048576;   // grotere bestanden (CJK) niet als preview laden
+  var MAX_RESULTS = 14;
+
   function fontFormat(name) {
     var ext = (String(name).match(/\.([a-z0-9]+)$/i) || [, ''])[1].toLowerCase();
     return { otf: 'opentype', ttf: 'truetype', woff: 'woff', woff2: 'woff2' }[ext] || null;
   }
 
-  function fontStyleEl() {
-    var style = $('customFontStyle');
+  function styleEl(id) {
+    var style = $(id);
     if (!style) {
       style = document.createElement('style');
-      style.id = 'customFontStyle';
+      style.id = id;
       document.head.appendChild(style);
     }
     return style;
   }
+
+  function fontKey(name) { return String(name || '').toLowerCase().replace(/[^a-z0-9]+/g, ''); }
+
+  function fontUrl(file) {
+    return new URL('assets/fonts/' + encodeURIComponent(file), window.location.href).href;
+  }
+
+  /* Alle snedes van een familie als @font-face onder de opgegeven naam */
+  function faceCss(family, alias) {
+    var fam = fontLib.byKey[fontKey(family)];
+    if (!fam) return '';
+    return fam.fonts.map(function (f) {
+      return "@font-face { font-family: '" + alias.replace(/'/g, '') + "'; src: url(\"" + fontUrl(f.file) + "\") format('" + f.format + "'); " +
+             'font-weight: ' + f.weight + '; font-style: ' + (f.italic ? 'italic' : 'normal') + '; font-display: block; }';
+    }).join('\n');
+  }
+
+  /* Familie opzoeken op naam uit een stijlgids: exact > begint met > bevat */
+  function findFamily(name) {
+    var key = fontKey(name);
+    if (!key || !fontLib.loaded) return null;
+    if (fontLib.byKey[key]) return fontLib.byKey[key];
+    var starts = null, contains = null;
+    fontLib.families.forEach(function (fam) {
+      var k = fam.key;
+      if (!starts && (k.indexOf(key) === 0 || key.indexOf(k) === 0) && Math.min(k.length, key.length) >= 4) starts = fam;
+      else if (!contains && (k.indexOf(key) !== -1 || key.indexOf(k) !== -1) && Math.min(k.length, key.length) >= 5) contains = fam;
+    });
+    return starts || contains;
+  }
+
+  function loadFontLibrary() {
+    if (IS_FILE) {
+      fontLib.failed = true;
+      setText($('fontLibHint'), 'De bibliotheek werkt alleen via een server (Render of Live Server). Uploaden werkt wel.');
+      el.fontSearch.disabled = true;
+      return Promise.resolve(false);
+    }
+    return Promise.resolve()
+      .then(function () { return fetch('assets/fonts/index.json', { cache: 'no-cache' }); })
+      .then(function (res) { if (!res.ok) throw new Error('HTTP ' + res.status); return res.json(); })
+      .then(function (idx) {
+        var byKey = {};
+        (idx.families || []).forEach(function (fam) {
+          fam.key = fontKey(fam.family);
+          fam.fonts = [];
+          byKey[fam.key] = fam;
+        });
+        (idx.fonts || []).forEach(function (f) {
+          var fam = byKey[fontKey(f.family)];
+          if (fam) fam.fonts.push(f);
+        });
+        fontLib.families = (idx.families || []).filter(function (fam) { return fam.fonts.length; });
+        fontLib.fonts = idx.fonts || [];
+        fontLib.byKey = byKey;
+        fontLib.loaded = true;
+        setText($('fontLibHint'), fontLib.families.length + ' families in de bibliotheek. Typ om te zoeken; klik Kop of Tekst om toe te passen.');
+        el.fontSearch.disabled = false;
+
+        // Alles wat op de bibliotheek wacht, nu echt inladen
+        if (fontsRestored) injectCustomFonts();
+        injectBrandLibraryFonts();
+        if (el.fontSearch.value.trim()) renderFontResults(el.fontSearch.value);
+        scheduleRender();
+        return true;
+      })
+      .catch(function () {
+        fontLib.failed = true;
+        setText($('fontLibHint'), 'Bibliotheek niet gevonden (assets/fonts/index.json). Uploaden werkt wel.');
+        el.fontSearch.disabled = true;
+        return false;
+      });
+  }
+
+  /* --- Zoeken --- */
+  function searchFamilies(query) {
+    var q = fontKey(query);
+    if (!q) return [];
+    var exact = [], starts = [], contains = [];
+    fontLib.families.forEach(function (fam) {
+      if (fam.key === q) exact.push(fam);
+      else if (fam.key.indexOf(q) === 0) starts.push(fam);
+      else if (fam.key.indexOf(q) !== -1) contains.push(fam);
+    });
+    return exact.concat(starts, contains);
+  }
+
+  function slotFamily(slot) {
+    var r = customFonts[slot];
+    return r && r.kind === 'lib' ? fontKey(r.family) : '';
+  }
+
+  function renderFontResults(query) {
+    var list = $('fontResults');
+    if (!fontLib.loaded) return;
+    var q = String(query || '').trim();
+    if (!q) { list.hidden = true; list.innerHTML = ''; styleEl('fontPreviewStyle').textContent = ''; return; }
+
+    var hits = searchFamilies(q);
+    var shown = hits.slice(0, MAX_RESULTS);
+    list.innerHTML = '';
+    list.hidden = false;
+
+    if (!hits.length) {
+      var empty = document.createElement('div');
+      empty.className = 'fontlib__empty';
+      empty.textContent = 'Niets gevonden voor "' + q + '". Upload het bestand met de knop hierboven.';
+      list.appendChild(empty);
+      styleEl('fontPreviewStyle').textContent = '';
+      return;
+    }
+
+    // Preview: één snede per getoonde familie (regular als die er is), alleen kleine bestanden
+    var css = [];
+    shown.forEach(function (fam) {
+      var face = fam.fonts.filter(function (f) { return !f.italic && /^400\b/.test(f.weight); })[0]
+              || fam.fonts.filter(function (f) { return !f.italic; })[0] || fam.fonts[0];
+      if (face && face.size <= MAX_PREVIEW_BYTES) {
+        css.push("@font-face { font-family: 'IPM Preview " + fam.key + "'; src: url(\"" + fontUrl(face.file) + "\") format('" + face.format + "'); font-display: swap; }");
+      }
+    });
+    styleEl('fontPreviewStyle').textContent = css.join('\n');
+
+    shown.forEach(function (fam) {
+      var row = document.createElement('div');
+      row.className = 'fontrow';
+
+      var prev = document.createElement('span');
+      prev.className = 'fontrow__preview';
+      prev.textContent = fam.family;
+      prev.title = fam.family + ' — ' + fam.files + ' bestand(en)';
+      prev.style.fontFamily = "'IPM Preview " + fam.key + "', " + UI_SANS;
+      row.appendChild(prev);
+
+      var meta = document.createElement('span');
+      meta.className = 'fontrow__meta';
+      meta.textContent = fam.files + (fam.files === 1 ? ' stijl' : ' stijlen') + (fam.italic ? ' · italic' : '');
+      row.appendChild(meta);
+
+      ['heading', 'body'].forEach(function (slot) {
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'fontrow__pick' + (slotFamily(slot) === fam.key ? ' is-active' : '');
+        btn.textContent = slot === 'heading' ? 'Kop' : 'Tekst';
+        btn.title = fam.family + ' gebruiken voor ' + (slot === 'heading' ? 'de kop' : 'de tekst');
+        btn.addEventListener('click', function () { useLibraryFont(slot, fam.family); });
+        row.appendChild(btn);
+      });
+      list.appendChild(row);
+    });
+
+    if (hits.length > shown.length) {
+      var more = document.createElement('div');
+      more.className = 'fontlib__empty';
+      more.textContent = 'Nog ' + (hits.length - shown.length) + ' families — typ verder om te verfijnen.';
+      list.appendChild(more);
+    }
+  }
+
+  /* --- Slots (kop/tekst) --- */
+  function slotAlias(slot) { return CUSTOM_FAMILY[slot]; }
 
   function injectCustomFonts() {
     var css = [];
     ['heading', 'body'].forEach(function (slot) {
       var f = customFonts[slot];
       if (!f) return;
-      css.push("@font-face { font-family: '" + CUSTOM_FAMILY[slot] + "'; src: url(" + f.dataUrl +
-               ") format('" + f.format + "'); font-weight: 100 900; font-style: normal; font-display: block; }");
+      if (f.kind === 'lib') {
+        css.push(faceCss(f.family, slotAlias(slot)));
+      } else {
+        css.push("@font-face { font-family: '" + slotAlias(slot) + "'; src: url(" + f.dataUrl +
+                 ") format('" + f.format + "'); font-weight: 100 900; font-style: normal; font-display: block; }");
+      }
     });
-    fontStyleEl().textContent = css.join('\n');
+    styleEl('customFontStyle').textContent = css.filter(Boolean).join('\n');
     rebuildCustomFontEntry();
   }
 
@@ -824,10 +1013,10 @@
     var h = customFonts.heading, b = customFonts.body;
     if (!h && !b) {
       delete FONTS.custom;
-      if (state.font === 'custom') state.font = DEFAULT_FONT;
+      if (state.font === 'custom' && fontsRestored) state.font = DEFAULT_FONT;
     } else {
-      var famH = h ? CUSTOM_FAMILY.heading : CUSTOM_FAMILY.body;
-      var famB = b ? CUSTOM_FAMILY.body : CUSTOM_FAMILY.heading;
+      var famH = h ? slotAlias('heading') : slotAlias('body');
+      var famB = b ? slotAlias('body') : slotAlias('heading');
       FONTS.custom = {
         label: 'Eigen — ' + [h && h.name, b && b.name].filter(Boolean).join(' + '),
         h: "'" + famH + "', " + UI_SANS,
@@ -840,38 +1029,50 @@
     setText(el.customBodyName, b ? b.name : 'geen');
     el.customHeadName.classList.toggle('is-set', !!h);
     el.customBodyName.classList.toggle('is-set', !!b);
+    el.customHeadName.classList.toggle('is-lib', !!(h && h.kind === 'lib'));
+    el.customBodyName.classList.toggle('is-lib', !!(b && b.kind === 'lib'));
     el.customHeadClear.hidden = !h;
     el.customBodyClear.hidden = !b;
+  }
+
+  /* Na het plaatsen: controleren of het font echt laadt, anders terugdraaien */
+  function commitSlot(slot, rec, previous, label) {
+    customFonts[slot] = rec;
+    injectCustomFonts();
+    var check = (document.fonts && typeof document.fonts.load === 'function')
+      ? document.fonts.load("16px '" + slotAlias(slot) + "'").then(function (faces) {
+          if (!faces || !faces.length) throw new Error('niet geladen');
+        })
+      : Promise.resolve();
+
+    return check.then(function () {
+      state.font = 'custom';
+      scheduleRender();
+      DB.set('font:' + slot, rec).catch(noop);
+      if (el.fontSearch.value.trim()) renderFontResults(el.fontSearch.value);
+      toast('Lettertype ' + (slot === 'heading' ? 'kop' : 'tekst') + ': ' + rec.name, 'ok');
+      return true;
+    }).catch(function () {
+      customFonts[slot] = previous;
+      injectCustomFonts();
+      scheduleRender();
+      toast('Dit lettertype kon niet worden geladen: ' + label, 'error');
+      return false;
+    });
+  }
+
+  function useLibraryFont(slot, family) {
+    var fam = fontLib.byKey[fontKey(family)];
+    if (!fam) { toast('Lettertype niet gevonden in de bibliotheek: ' + family, 'error'); return Promise.resolve(false); }
+    return commitSlot(slot, { kind: 'lib', family: fam.family, name: fam.family }, customFonts[slot], fam.family);
   }
 
   function useCustomFont(slot, file) {
     var format = fontFormat(file.name);
     if (!format) { toast('Kies een OTF-, TTF-, WOFF- of WOFF2-bestand.', 'error'); return; }
     if (file.size > MAX_FONT_BYTES) { toast('Dit lettertype is te groot (' + humanSize(file.size) + '). Maximaal 8 MB.', 'error'); return; }
-
     readFile(file, 'dataurl', function (dataUrl) {
-      var rec = { name: stripExt(file.name), dataUrl: dataUrl, format: format };
-      var previous = customFonts[slot];
-      customFonts[slot] = rec;
-      injectCustomFonts();
-
-      var check = (document.fonts && typeof document.fonts.load === 'function')
-        ? document.fonts.load("16px '" + CUSTOM_FAMILY[slot] + "'").then(function (faces) {
-            if (!faces || !faces.length) throw new Error('niet geladen');
-          })
-        : Promise.resolve();
-
-      check.then(function () {
-        state.font = 'custom';
-        scheduleRender();
-        DB.set('font:' + slot, rec).catch(noop);
-        toast('Lettertype geladen: ' + rec.name, 'ok');
-      }).catch(function () {
-        customFonts[slot] = previous;
-        injectCustomFonts();
-        scheduleRender();
-        toast('Dit lettertype kon niet worden gelezen: ' + file.name, 'error');
-      });
+      commitSlot(slot, { kind: 'file', name: stripExt(file.name), dataUrl: dataUrl, format: format }, customFonts[slot], file.name);
     });
   }
 
@@ -879,6 +1080,7 @@
     customFonts[slot] = null;
     injectCustomFonts();
     DB.del('font:' + slot).catch(noop);
+    if (el.fontSearch.value.trim()) renderFontResults(el.fontSearch.value);
     scheduleRender();
   }
 
@@ -887,14 +1089,38 @@
       .then(function (res) {
         ['heading', 'body'].forEach(function (slot, i) {
           var rec = res[i];
-          if (rec && typeof rec.dataUrl === 'string' && rec.format && rec.name) customFonts[slot] = rec;
+          if (!rec || !rec.name) return;
+          if (rec.kind === 'lib' && rec.family) customFonts[slot] = rec;
+          else if (typeof rec.dataUrl === 'string' && rec.format) customFonts[slot] = { kind: 'file', name: rec.name, dataUrl: rec.dataUrl, format: rec.format };
         });
       })
       .catch(noop)
       .then(function () {
+        fontsRestored = true;
         injectCustomFonts();          // ruimt ook 'custom' op als er niets bewaard was
         scheduleRender();
       });
+  }
+
+  /* --- Stijlgids-fonts uit de bibliotheek ---
+     FONTS.brand gebruikt de echte familienamen; staan die in de bibliotheek,
+     dan registreren we de snedes onder precies die naam. Geeft terug welke
+     namen gevonden zijn en welke niet. */
+  function injectBrandLibraryFonts() {
+    var found = [], missing = [];
+    var css = [];
+    if (brandFonts && fontLib.loaded) {
+      var seen = {};
+      [brandFonts.heading, brandFonts.body].filter(Boolean).forEach(function (name) {
+        if (seen[name]) return;
+        seen[name] = true;
+        var fam = findFamily(name);
+        if (fam) { css.push(faceCss(fam.family, name)); found.push(name === fam.family ? name : name + ' → ' + fam.family); }
+        else missing.push(name);
+      });
+    }
+    styleEl('brandFontStyle').textContent = css.join('\n');
+    return { found: found, missing: missing };
   }
 
   /* ===========================================================================
@@ -916,7 +1142,7 @@
 
   /* Fonts die een stijlgids noemt. Ze renderen alleen als ze op de computer
      staan of als je het bestand uploadt onder "Eigen lettertype". */
-  function setBrandFonts(fonts) {
+  function setBrandFonts(fonts, quiet) {
     brandFonts = (fonts && (fonts.heading || fonts.body)) ? fonts : null;
     if (brandFonts) {
       var h = brandFonts.heading || brandFonts.body;
@@ -931,6 +1157,7 @@
       if (state.font === 'brand') state.font = DEFAULT_FONT;
     }
     buildFontSelect();
+    return injectBrandLibraryFonts();
   }
 
   /* Geuploade foto verwerken: te grote beelden worden verkleind zodat de
@@ -1065,6 +1292,43 @@
     return loadImage(dataUrl).then(function () { return dataUrl; });
   }
 
+  /* Eenkleurig maken: elke niet-transparante pixel wordt wit of zwart, de
+     alpha blijft. Werkt voor SVG (na rasterisatie) én PNG, en exporteert
+     gewoon mee omdat het resultaat een data-URL is (geen CSS-filter, want
+     die kent html2canvas niet). */
+  function tintLogo(dataUrl, tint) {
+    if (!dataUrl || tint !== 'white' && tint !== 'black') return Promise.resolve(dataUrl);
+    return loadImage(dataUrl).then(function (img) {
+      var cv = document.createElement('canvas');
+      cv.width = img.naturalWidth; cv.height = img.naturalHeight;
+      var ctx = cv.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+      var id = ctx.getImageData(0, 0, cv.width, cv.height);
+      var d = id.data, v = tint === 'white' ? 255 : 0;
+      for (var i = 0; i < d.length; i += 4) {
+        if (d[i + 3] === 0) continue;
+        d[i] = v; d[i + 1] = v; d[i + 2] = v;
+      }
+      ctx.putImageData(id, 0, 0);
+      return cv.toDataURL('image/png');
+    });
+  }
+
+  function applyLogoTint() {
+    var seq = ++logoTintSeq;
+    if (!logoBase) { state.logo = ''; scheduleRender(); return Promise.resolve(); }
+    return tintLogo(logoBase, state.logoTint).then(function (url) {
+      if (seq !== logoTintSeq) return;          // inmiddels alweer gewisseld
+      state.logo = url;
+      scheduleRender();
+    }).catch(function () {
+      if (seq !== logoTintSeq) return;
+      state.logo = logoBase;
+      scheduleRender();
+      toast('Het logo kon niet worden omgekleurd; origineel gebruikt.', 'warn');
+    });
+  }
+
   function useUploadedLogo(file) {
     var isSvg = /^image\/svg/i.test(file.type) || /\.svg$/i.test(file.name);
     if (!/^image\//.test(file.type) && !isSvg) { toast('Kies een afbeelding (PNG, SVG, JPG) als logo.', 'error'); return; }
@@ -1075,9 +1339,9 @@
         ? raw.replace(/^data:[^;,]*/, 'data:image/svg+xml')   // .svg zonder mimetype (Windows)
         : raw;
       prepareLogo(url).then(function (ready) {
-        state.logo = ready;
+        logoBase = ready;
         state.logoName = stripExt(file.name);
-        scheduleRender();
+        applyLogoTint();
         DB.set('logo', { dataUrl: ready, name: state.logoName }).catch(noop);
         toast('Logo geplaatst: ' + file.name, 'ok');
       }).catch(function () {
@@ -1093,8 +1357,8 @@
       .then(prepareLogo)
       .then(function (url) {
         if (state.logo !== src) return;          // gebruiker koos inmiddels iets anders
-        state.logo = url;
-        scheduleRender();
+        logoBase = url;
+        applyLogoTint();
         DB.set('logo', { dataUrl: url, name: state.logoName }).catch(noop);
       })
       .catch(function () {
@@ -1103,7 +1367,7 @@
   }
 
   function clearLogo(silent) {
-    state.logo = ''; state.logoName = '';
+    state.logo = ''; state.logoName = ''; logoBase = '';
     DB.del('logo').catch(noop);
     if (!silent) scheduleRender();
   }
@@ -1111,9 +1375,9 @@
   function restoreLogo() {
     return DB.get('logo').then(function (rec) {
       if (!rec || !isDataUrl(rec.dataUrl)) return;
-      state.logo = rec.dataUrl;
+      logoBase = rec.dataUrl;
       state.logoName = rec.name || 'logo';
-      scheduleRender();
+      return applyLogoTint();
     }).catch(noop);
   }
 
@@ -1138,8 +1402,9 @@
     if (b.radius !== null) state.sharp = b.radius === 0;
     if (b.handle && !state.badge) state.badge = b.handle;
 
+    var libResult = null;
     if (b.fonts.heading || b.fonts.body) {
-      setBrandFonts(b.fonts);
+      libResult = setBrandFonts(b.fonts, true);
       state.font = 'brand';
     }
 
@@ -1148,7 +1413,13 @@
 
     renderBrandReport(b, filename);
     scheduleRender();
-    toast('Merkstijl overgenomen uit ' + filename, 'ok');
+    var msg = ['Merkstijl overgenomen uit ' + filename];
+    var kind = 'ok';
+    if (libResult && fontLib.loaded) {
+      if (libResult.found.length) msg.push('Fonts uit de bibliotheek: ' + libResult.found.join(', '));
+      if (libResult.missing.length) { msg.push('Niet in de bibliotheek: ' + libResult.missing.join(', ') + ' — zoek of upload het bestand'); kind = 'warn'; }
+    }
+    toast(msg.join('. ') + '.', kind, kind === 'warn' ? 8000 : 4500);
     return true;
   }
 
@@ -1206,8 +1477,9 @@
     if (b.roles.accent && BRAND.contrastRatio(b.roles.accent, '#000000') < 2.2) {
       toast('Let op: dit accent heeft weinig contrast op donkere foto’s.', 'warn');
     }
-    // Fonts uit een stijlgids zijn alleen namen: even checken of ze er echt zijn
-    if ((b.fonts.heading || b.fonts.body) && document.fonts && typeof document.fonts.check === 'function') {
+    // Fonts uit een stijlgids zijn alleen namen: zonder bibliotheek even checken
+    // of ze op deze computer staan (met bibliotheek meldt loadBrandText dit al)
+    if (!fontLib.loaded && (b.fonts.heading || b.fonts.body) && document.fonts && typeof document.fonts.check === 'function') {
       var missing = [b.fonts.heading, b.fonts.body].filter(Boolean).filter(function (fam) {
         try { return !document.fonts.check("16px '" + fam + "'"); } catch (err) { return false; }
       });
@@ -1654,6 +1926,7 @@
     bindRange('textScale', 'textScale');
     bindRange('padding', 'padding');
     bindRange('logoSize', 'logoSize');
+    bindRadio('logoTint', 'logoTint', function () { applyLogoTint(); });
 
     bindCheck('mdToggle', 'markdown');
     bindCheck('autoFit', 'autoFit');
@@ -1710,6 +1983,14 @@
     });
     on(el.customHeadClear, 'click', function () { clearCustomFont('heading'); });
     on(el.customBodyClear, 'click', function () { clearCustomFont('body'); });
+
+    /* Fontbibliotheek: zoeken met kleine vertraging zodat previews niet per toets laden */
+    var fontSearchTimer;
+    on(el.fontSearch, 'input', function () {
+      clearTimeout(fontSearchTimer);
+      fontSearchTimer = setTimeout(function () { renderFontResults(el.fontSearch.value); }, 160);
+    });
+    on(el.fontSearch, 'keydown', function (e) { if (e.key === 'Escape') { el.fontSearch.value = ''; renderFontResults(''); } });
 
     /* AI-assistent */
     on(el.aiGenerate, 'click', function () { aiRequest('generate'); });
@@ -2014,7 +2295,7 @@
     try { saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null'); } catch (err) { return; }
     if (!saved || typeof saved !== 'object') return;
 
-    if (saved.__fonts && typeof saved.__fonts === 'object') setBrandFonts(saved.__fonts);
+    if (saved.__fonts && typeof saved.__fonts === 'object') setBrandFonts(saved.__fonts, true);
     if (typeof saved.__meta === 'string') lastMetaSig = saved.__meta;
 
     Object.keys(DEFAULTS).forEach(function (k) {
@@ -2024,6 +2305,7 @@
     if (THEMES.indexOf(state.theme) === -1) state.theme = DEFAULTS.theme;
     if (!FONTS[state.font] && state.font !== 'custom') state.font = DEFAULT_FONT;   // 'custom' volgt uit IndexedDB
     if (state.editMode !== 'fields' && state.editMode !== 'markdown') state.editMode = DEFAULTS.editMode;
+    if (['none', 'white', 'black'].indexOf(state.logoTint) === -1) state.logoTint = 'none';
     state.image = null;
     state.imageRatio = null;
     state.logo = '';       // komt terug uit IndexedDB
@@ -2044,6 +2326,7 @@
     restoreLogo();
     restoreBrand();
     restoreCustomFonts();
+    loadFontLibrary();
 
     // AI-assistent: instellingen tonen en de server stil controleren
     setVal(el.aiEndpoint, state.aiEndpoint);

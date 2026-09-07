@@ -346,14 +346,15 @@
             <select id="font"></select>
           </div>
 
-          <!-- Eigen lettertypen: worden als @font-face ingebed zodat ook de export ze gebruikt -->
+          <!-- Lettertypen: bibliotheek (assets/fonts, doorzoekbaar) of eigen upload.
+               Beide worden als @font-face ingebed zodat ook de export ze gebruikt. -->
           <div class="field">
-            <span class="label">Eigen lettertype <i class="label__opt">OTF, TTF, WOFF, WOFF2</i></span>
+            <span class="label">Eigen lettertype <i class="label__opt">kop &amp; tekst</i></span>
             <div class="filerow">
               <span class="filerow__slot">Kop</span>
               <span class="filerow__name" id="customHeadName">geen</span>
-              <button class="btn btn--ghost btn--sm" id="customHeadBtn" type="button">
-                <svg class="ico" aria-hidden="true"><use href="#i-upload"/></svg> Kies
+              <button class="btn btn--ghost btn--sm" id="customHeadBtn" type="button" title="Eigen bestand uploaden (OTF, TTF, WOFF, WOFF2)">
+                <svg class="ico" aria-hidden="true"><use href="#i-upload"/></svg> Upload
               </button>
               <button class="iconbtn" id="customHeadClear" type="button" aria-label="Kopfont verwijderen" hidden>
                 <svg class="ico" aria-hidden="true"><use href="#i-trash"/></svg>
@@ -362,15 +363,20 @@
             <div class="filerow">
               <span class="filerow__slot">Tekst</span>
               <span class="filerow__name" id="customBodyName">geen</span>
-              <button class="btn btn--ghost btn--sm" id="customBodyBtn" type="button">
-                <svg class="ico" aria-hidden="true"><use href="#i-upload"/></svg> Kies
+              <button class="btn btn--ghost btn--sm" id="customBodyBtn" type="button" title="Eigen bestand uploaden (OTF, TTF, WOFF, WOFF2)">
+                <svg class="ico" aria-hidden="true"><use href="#i-upload"/></svg> Upload
               </button>
               <button class="iconbtn" id="customBodyClear" type="button" aria-label="Tekstfont verwijderen" hidden>
                 <svg class="ico" aria-hidden="true"><use href="#i-trash"/></svg>
               </button>
             </div>
             <input type="file" id="customFontInput" accept=".otf,.ttf,.woff,.woff2,font/otf,font/ttf,font/woff,font/woff2" hidden>
-            <p class="hint">Eén font is genoeg: het wordt dan voor kop én tekst gebruikt. Wordt in deze browser onthouden.</p>
+
+            <div class="fontlib" id="fontLib">
+              <input type="search" id="fontSearch" class="fontlib__search" placeholder="Zoek in de bibliotheek…" autocomplete="off" spellcheck="false" aria-label="Zoek een lettertype">
+              <div class="fontlib__list" id="fontResults" hidden></div>
+              <p class="hint" id="fontLibHint">Bibliotheek laden…</p>
+            </div>
           </div>
 
           <div class="grid2">
@@ -452,6 +458,19 @@
               </button>
             </div>
             <input type="file" id="logoInput" accept="image/*,.svg" hidden>
+          </div>
+
+          <div class="field">
+            <span class="label">Logokleur <i class="label__opt">voor eenkleurige logo's</i></span>
+            <div class="seg seg--3 seg--sm" role="radiogroup" aria-label="Logokleur">
+              <input type="radio" name="logoTint" id="lt-none" value="none" checked>
+              <label for="lt-none"><b>Origineel</b></label>
+              <input type="radio" name="logoTint" id="lt-white" value="white">
+              <label for="lt-white"><b>Wit</b></label>
+              <input type="radio" name="logoTint" id="lt-black" value="black">
+              <label for="lt-black"><b>Zwart</b></label>
+            </div>
+            <p class="hint">Zet een zwart logo om naar wit voor op donkere foto's (of andersom). Werkt met SVG en transparante PNG.</p>
           </div>
 
           <div class="grid2">

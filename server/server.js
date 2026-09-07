@@ -356,7 +356,9 @@ function serveStatic(req, res) {
     res.writeHead(200, {
       'Content-Type': MIME[ext] || 'application/octet-stream',
       'Content-Length': stat.size,
-      'Cache-Control': ext === '.html' ? 'no-cache' : 'public, max-age=3600'
+      'Cache-Control': (ext === '.html' || filePath.endsWith('index.json')) ? 'no-cache'
+                     : /^\.(otf|ttf|woff2?)$/.test(ext) ? 'public, max-age=604800, immutable'
+                     : 'public, max-age=3600'
     });
     fs.createReadStream(filePath).pipe(res);
   });

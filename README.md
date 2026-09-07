@@ -119,12 +119,35 @@ er weer. **Reset** wist alles behalve de eigen lettertypen.
 
 ---
 
-## Eigen lettertype
+## Lettertypen
 
-Onder **Vormgeving → Eigen lettertype** kies je een OTF-, TTF-, WOFF- of
-WOFF2-bestand voor de kop en/of de tekst (één bestand is genoeg voor beide).
-Een fontbestand op het venster slepen werkt ook. Het font wordt als
-`@font-face` ingebed, zodat het ook in de export terechtkomt.
+Onder **Vormgeving → Eigen lettertype** zijn er drie manieren:
+
+1. **Zoeken in de bibliotheek.** Alle fontbestanden in `assets/fonts/` zijn
+   doorzoekbaar op familienaam; elk resultaat wordt in het font zelf getoond.
+   Klik **Kop** of **Tekst** om een familie toe te passen. Alle snedes van de
+   familie worden geladen, dus vet en cursief renderen echt.
+2. **Automatisch uit de stijlgids.** Noemt je `.md` een lettertype (bijvoorbeeld
+   `--ff-heading: 'Aeonik'` of "Font voor koppen: Avenir Next") en zit die
+   familie in de bibliotheek, dan wordt hij direct geladen. Zit hij er niet in,
+   dan meldt de tool dat en kun je zoeken of uploaden.
+3. **Uploaden.** Een eigen OTF-, TTF-, WOFF- of WOFF2-bestand (max 8 MB) voor
+   kop en/of tekst. Een fontbestand op het venster slepen werkt ook. Wordt in
+   de browser onthouden.
+
+Fonts worden als `@font-face` ingebed, zodat ze ook in de export terechtkomen.
+
+### Bibliotheek bijwerken
+
+Zet fontbestanden in `assets/fonts/` en draai:
+
+```bash
+npm run fonts        # maakt assets/fonts/index.json (familie, stijl, gewicht, italic)
+```
+
+Commit `index.json` mee, zodat de bibliotheek ook zonder buildstap werkt.
+Render draait dit commando ook bij elke deploy. `.ttc` en `.fon` worden
+overgeslagen: browsers laden die niet via `@font-face`.
 
 ---
 
