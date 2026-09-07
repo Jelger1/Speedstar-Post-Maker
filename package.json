@@ -1,0 +1,18 @@
+{
+  "name": "post-studio",
+  "version": "1.0.0",
+  "description": "Instagram Post Maker met AI-assistent (Claude) — frontend + kleine Node-backend voor Render",
+  "private": true,
+  "main": "server/server.js",
+  "scripts": {
+    "start": "node server/server.js",
+    "dev": "node server/server.js"
+  },
+  "engines": {
+    "node": ">=18.17"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.80.0",
+    "zod": "^3.25.0"
+  }
+}
