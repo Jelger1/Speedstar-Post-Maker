@@ -91,14 +91,14 @@ Wanneer de backend de prompt naar OpenAI stuurt, MOET de system prompt deze cons
 **Merkpersoonlijkheid (Navigeren, Dynamisch, Stabiel):**
 - **Identiteit:** Speedstar Logistics is dynamisch en altijd in beweging, maar met een sterke, stabiele basis (zoals de noorderster uit het logo). 
 - **Tone:** Professioneel, betrouwbaar, daadkrachtig.
-- **Taal:** Engels. Gebruik nautische of logistieke metaforen waar gepast ("sail further", "deliver trust").
+- **Taal:** Nederlands. Alle tekst die op de post komt (bovenkop, hoofdkop, body, accentwoorden) is Nederlands, ongeacht de taal van de briefing. Vermijd onnodige Engelse leenwoorden. Gebruik nautische of logistieke metaforen waar gepast ("verder varen", "vertrouwen leveren", "vaste koers").
 
 **Output JSON Structuur voor de API:**
 ```json
 {
-  "bovenkop": "Korte introductie (max 4 woorden)",
-  "hoofdkop": "De kernboodschap (max 6 woorden)",
-  "body": "De uitleg of wens (max 2 zinnen, kort en bondig)",
+  "bovenkop": "Korte introductie in het Nederlands (max 4 woorden)",
+  "hoofdkop": "De kernboodschap in het Nederlands (max 6 woorden)",
+  "body": "De uitleg of wens in het Nederlands (max 2 zinnen, kort en bondig)",
   "accentWoorden": ["woord1", "woord2"],
   "aanbevolenTemplate": "A, B, C of D"
 }

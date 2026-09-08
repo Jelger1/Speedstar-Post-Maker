@@ -60,12 +60,12 @@ function obj(properties) {
 }
 
 const POST_SCHEMA = obj({
-  bovenkop: { type: 'string', description: 'Korte introductie boven de hoofdkop (Heading 3, 26pt): max 4 woorden, bijv. een datum, thema of aanleiding. Leeg als het template geen bovenkop nodig heeft.' },
-  hoofdkop: { type: 'string', description: 'De kernboodschap (Heading 2, 41pt): max 6 woorden, geen punt aan het eind. Bij Template B leeg.' },
-  body: { type: 'string', description: 'De uitleg of wens (Inleiding, 16pt): max 2 zinnen, kort en bondig. Bij Template B leeg.' },
-  accentWoorden: { type: 'array', items: { type: 'string' }, description: '1 tot 3 woorden of korte zinsdelen die LETTERLIJK in hoofdkop of body voorkomen en Bold Italic worden. Leeg toegestaan.' },
+  bovenkop: { type: 'string', description: 'IN HET NEDERLANDS. Korte introductie boven de hoofdkop (Heading 3, 26pt): max 4 woorden, bijv. een datum, thema of aanleiding. Leeg als het template geen bovenkop nodig heeft.' },
+  hoofdkop: { type: 'string', description: 'IN HET NEDERLANDS. De kernboodschap (Heading 2, 42pt): max 6 woorden, geen punt aan het eind. Bij Template B leeg.' },
+  body: { type: 'string', description: 'IN HET NEDERLANDS. De uitleg of wens (Inleiding, 14pt): max 2 zinnen, kort en bondig. Bij Template B leeg.' },
+  accentWoorden: { type: 'array', items: { type: 'string' }, description: 'IN HET NEDERLANDS: 1 tot 3 woorden of korte zinsdelen die LETTERLIJK in hoofdkop of body voorkomen en Bold Italic worden. Leeg toegestaan.' },
   aanbevolenTemplate: { type: 'string', enum: TEMPLATES, description: 'A = Event & Wishes, B = Brand Awareness (alleen beeld + logo), C = Krachtig statement, D = Data & Infographic' },
-  dataElement: { type: 'string', description: 'Alleen bij Template D: het getal of feit dat groot in beeld komt, max 6 tekens, bijv. "98%" of "24/7". Anders leeg.' },
+  dataElement: { type: 'string', description: 'Alleen bij Template D: het getal of feit dat groot in beeld komt, max 6 tekens, bijv. "98%" of "24/7". Een eventueel woord erin is Nederlands. Anders leeg.' },
   invalshoek: { type: 'string', description: 'Naam van deze variant in het Nederlands, max 3 woorden, bijv. "Warm & persoonlijk"' },
   toelichting: { type: 'string', description: 'Eén zin in het Nederlands: waarom deze variant en dit template passen bij de briefing.' }
 });
@@ -85,28 +85,28 @@ const SYSTEM_PROMPT = `You are the in-house copywriter and art director of Speed
 ## Brand personality — Navigate, Dynamic, Stable
 - Speedstar Logistics is dynamic and always in motion, but with a strong, stable base: the North Star in the logo. It navigates: it knows the way and guides cargo and customers safely to their destination.
 - Tone of voice: professional, reliable, decisive. Confident, never boastful. Warm towards people (drivers, planners, customers), precise about facts.
-- Language: ENGLISH, always, even when the briefing is in Dutch. Short sentences, active voice, concrete words.
-- Use nautical or logistics metaphors where they fit naturally: "sail further", "deliver trust", "steady course", "on the move", "keep the world moving". Never force one in and never more than one per post.
-- No hashtags, no emoji, no exclamation marks in headlines, no clichés ("we go the extra mile"), no invented facts: use only figures, dates, names and promises from the briefing. If something essential is missing, write around it and mention it in "notes" (in Dutch).
+- LANGUAGE — THE MOST IMPORTANT RULE: everything that ends up on the post is written in DUTCH. That means bovenkop, hoofdkop, body, accentWoorden and any word inside dataElement. The briefing may arrive in Dutch, English or any other language; the post is always Dutch. Never return English copy, not even a single headline, and avoid unnecessary English loanwords (no "delivery", "trust", "on time" — use "levering", "vertrouwen", "op tijd"). Short sentences, active voice, concrete words.
+- Use nautical or logistics metaphors in Dutch where they fit naturally: "verder varen", "vertrouwen leveren", "vaste koers", "altijd in beweging", "de wereld in beweging houden". Never force one in and never more than one per post.
+- No hashtags, no emoji, no exclamation marks in headlines, no clichés ("wij gaan net dat stapje verder", "kwaliteit staat voorop"), no invented facts: use only figures, dates, names and promises from the briefing. If something essential is missing, write around it and mention it in "notes" (in Dutch).
 
 ## The post structure (typographic hierarchy)
-- bovenkop: the eyebrow above the headline. Max 4 words. A date, occasion, theme or short lead-in ("1 May 2026", "Workers Day", "Did you know?"). May be empty.
+- bovenkop: the eyebrow above the headline. Max 4 words. A date, occasion, theme or short lead-in, in Dutch ("1 mei 2026", "Dag van de Arbeid", "Wist je dat?"). May be empty.
 - hoofdkop: the main message. Max 6 words, no full stop at the end. This is what people read first.
 - body: the explanation or the wish. Max 2 short sentences. May be empty when the headline says it all.
-- accentWoorden: 1-3 words or short phrases that must appear LITERALLY (same spelling) in hoofdkop or body. They are set in bold italic to make them stand out. Choose the words that carry the message ("trust", "keeps the world moving"). Empty list allowed.
-- dataElement: only for Template D — the number or fact shown large ("98%", "24/7", "12 countries"). Otherwise empty.
+- accentWoorden: 1-3 words or short phrases that must appear LITERALLY (same spelling) in hoofdkop or body. They are set in bold italic to make them stand out. Choose the words that carry the message, in Dutch ("vertrouwen", "in beweging"). Empty list allowed.
+- dataElement: only for Template D — the number or fact shown large ("98%", "24/7", "12 landen"). Otherwise empty.
 
 ## Templates — recommend the one that fits the message
 - A "Event & Wishes": holidays, wishes, special days, anniversaries, thank-you posts. Photo with text left-aligned: bovenkop (date/occasion) → hoofdkop → body. Default choice for greetings.
 - B "Brand Awareness": pure visual impact — photo plus a large centred logo, NO text. Recommend only when the briefing is about mood, imagery or the brand itself with nothing to say; then leave bovenkop, hoofdkop and body empty.
-- C "Statement": core values and strong one-liners ("Powered by hardworking people who deliver trust"). Centred, heavy navy overlay, white text. hoofdkop carries the statement (max 6 words, or up to ~10 if it is the whole post); body optional; accent words matter most here.
-- D "Data & Infographic": facts, percentages, milestones. dataElement carries the number, bovenkop names what it measures ("On-time deliveries"), hoofdkop gives the takeaway, body one sentence of context. Only when the briefing contains a real number.
+- C "Statement": core values and strong one-liners in Dutch ("Gedreven door mensen die vertrouwen leveren"). Text sits left-aligned against the top margin, over a photo with a brand gradient. hoofdkop carries the statement (max 6 words, or up to ~10 if it is the whole post); body optional; accent words matter most here.
+- D "Data & Infographic": facts, percentages, milestones. dataElement carries the number, bovenkop names what it measures ("Op tijd geleverd"), hoofdkop gives the takeaway, body one sentence of context. Only when the briefing contains a real number.
 
 ## Modes
 - generate: deliver exactly 3 clearly different angles (for example: warm & personal / proud & factual / short & strong), each with its own aanbevolenTemplate when that makes sense. invalshoek names the angle in Dutch.
 - improve: keep the message and the facts of the current post, make it sharper and more on-brand, keep the current template unless it clearly does not fit. Deliver exactly 1 variant.
 
-Return only the JSON object that matches the schema. No markdown, no commentary.`;
+Return only the JSON object that matches the schema. No markdown, no commentary. Check before answering: is every field that appears on the post written in Dutch? If not, rewrite it.`;
 
 /* ---------------------------------------------------------------------------
    Hulpfuncties
@@ -208,7 +208,7 @@ function buildUserMessage(p) {
     ? '## Mode: IMPROVE — rewrite the current post (exactly 1 variant). Keep the message and the facts; make it sharper and more on-brand.'
     : '## Mode: GENERATE — write a new post (exactly 3 clearly different variants) based on the briefing.');
 
-  lines.push('', '## Briefing (may be in Dutch; the post itself must be in English)');
+  lines.push('', '## Briefing (any language; the post itself must be written in Dutch)');
   lines.push(str(p.brief, 3000) || '(no briefing — derive the goal from the current post)');
 
   const hasPost = ['bovenkop', 'hoofdkop', 'body', 'data'].some(k => str(post[k], 1000));
@@ -260,14 +260,14 @@ function sanitizeVariant(v) {
 
 const MOCK_RESPONSE = {
   variants: [
-    { bovenkop: '1 May 2026', hoofdkop: 'Happy Workers Day', body: 'To everyone who keeps the world moving: thank you. Today we celebrate you.',
-      accentWoorden: ['keeps the world moving'], aanbevolenTemplate: 'A', dataElement: '', invalshoek: 'Warm & persoonlijk',
+    { bovenkop: '1 mei 2026', hoofdkop: 'Fijne Dag van de Arbeid', body: 'Aan iedereen die de wereld in beweging houdt: bedankt. Vandaag vieren we jullie.',
+      accentWoorden: ['de wereld in beweging houdt'], aanbevolenTemplate: 'A', dataElement: '', invalshoek: 'Warm & persoonlijk',
       toelichting: 'Testmodus (AI_MOCK=1): een wens past bij Template A.' },
-    { bovenkop: '', hoofdkop: 'Powered by hardworking people', body: 'Every delivery starts with someone who cares. We deliver trust, every single day.',
-      accentWoorden: ['hardworking', 'deliver trust'], aanbevolenTemplate: 'C', dataElement: '', invalshoek: 'Trots & krachtig',
+    { bovenkop: '', hoofdkop: 'Gedreven door hardwerkende mensen', body: 'Elke levering begint bij iemand die er werk van maakt. Zo leveren we elke dag vertrouwen.',
+      accentWoorden: ['hardwerkende mensen', 'vertrouwen'], aanbevolenTemplate: 'C', dataElement: '', invalshoek: 'Trots & krachtig',
       toelichting: 'Testmodus: een statement over de mensen past bij Template C.' },
-    { bovenkop: 'On-time deliveries', hoofdkop: 'Reliability you can plan on', body: 'Across our network, cargo arrives when we say it will.',
-      accentWoorden: ['plan on'], aanbevolenTemplate: 'D', dataElement: '98%', invalshoek: 'Feit & cijfer',
+    { bovenkop: 'Op tijd geleverd', hoofdkop: 'Betrouwbaar om op te plannen', body: 'In ons hele netwerk komt lading aan wanneer we het beloven.',
+      accentWoorden: ['op te plannen'], aanbevolenTemplate: 'D', dataElement: '98%', invalshoek: 'Feit & cijfer',
       toelichting: 'Testmodus: een percentage vraagt om Template D.' }
   ],
   notes: 'Testmodus: geen echte AI-aanroep (AI_MOCK=1).'
