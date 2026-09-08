@@ -6,7 +6,7 @@
      2. DOM-referenties & hulpjes          7. Mobiel
      3. Renderpijplijn (templates A-D)     8. Events
      4. Foto                               9. Export
-     5. Logo (SVG -> PNG voor de export)  10. Opslag & start
+     5. Logo & watermerk (inline SVG)     10. Opslag & start
 
    Merkregels (maten, kleuren, posities) staan in css/styles.css; welk veld in
    welk typografisch niveau komt staat in js/typography.js. Dit bestand
@@ -22,12 +22,23 @@
      ========================================================================= */
   var CANVAS = { w: 1080, h: 1350 };          // 4:5, vast (styleguide §1.1)
 
-  /* Logovarianten: bestand + op welke ondergrond hij hoort */
+  /* Logokleuren: per variant het bestand van het volledige logo (officiële
+     twee-kleurenversies) en de egale vulkleur voor het beeldmerk (S).
+     'auto' staat er niet in: dat is wit, of de kleur van de gradient. */
   var LOGOS = {
-    'white':      { file: 'assets/brand/speedstar-logo-white.svg',      label: 'wit' },
-    'blue-white': { file: 'assets/brand/speedstar-logo-blue-white.svg', label: 'blauw / wit' },
-    'color':      { file: 'assets/brand/speedstar-logo-color.svg',      label: 'kleur' }
+    'white':      { file: 'assets/brand/speedstar-logo-white.svg',      mark: '#ffffff', label: 'wit' },
+    'blue-white': { file: 'assets/brand/speedstar-logo-blue-white.svg', mark: '#305bad', label: 'blauw' },
+    'color':      { file: 'assets/brand/speedstar-logo-color.svg',      mark: '#221f5e', label: 'navy' }
   };
+  var MARK_FILE = 'assets/brand/speedstar-mark-white.svg';   // beeldmerk, wit; wordt hergekleurd
+
+  /* Gradient-overlays (CSS: --gradient-*); ink = primaire kleur -> logo kleurt mee */
+  var GRADIENTS = {
+    'lightblue': { ink: '#96bed6', label: 'lichtblauw' },
+    'blue':      { ink: '#305bad', label: 'blauw' },
+    'navy':      { ink: '#221f5e', label: 'navy' }
+  };
+  var WATERMARK_INK = '#ffffff';
   var IS_FILE = window.location.protocol === 'file:';
   var SERVER_HINT = 'Start de tool via een lokale server (npm start, of VS Code "Live Server").';
   var SERVER_HINT_HTML = 'Start de tool via een lokale server: <code>npm start</code> of VS Code <b>Live Server</b>';
@@ -38,14 +49,17 @@
   var MAX_IMAGE_EDGE = 4096;
   var MAX_UPLOAD_BYTES = 40 * 1048576;
   var LOGO_RASTER_EDGE = 1800;               // 80% van 2160px (2x-export) blijft scherp
+  var WATERMARK_RASTER_EDGE = 3240;          // 150% van 2160px (2x-export)
 
   var DEFAULTS = {
     template: 'a',
     image: null, imageName: '', imageRatio: null,
-    overlay: 40, zoom: 100, focus: 'center',
+    overlay: 40, zoom: 100, focus: 'center', gradient: 'none', gradientStrength: 100,
     kicker: '', title: '', intro: '', data: '', accents: '',
-    headSize: 'h2', ink: 'light', autoFit: true,
-    logoVariant: 'white', plate: 'none', dataAccent: false,
+    headSize: 'h2', ink: 'light', autoFit: true, accentLightblue: true,
+    textPos: 'top', textAlign: 'left',
+    logoType: 'mark', logoVariant: 'auto', plate: 'none', dataColor: 'ice',
+    watermark: false, watermarkOpacity: 20,
     format: 'png', exportScale: '1'
   };
 
@@ -74,7 +88,8 @@
 
   var el = {
     canvas: $('postCanvas'), stage: $('stage'),
-    pcImage: $('pcImage'), pcFlow: $('pcFlow'), pcBody: $('pcBody'), pcLogo: $('pcLogo'),
+    pcImage: $('pcImage'), pcFlow: $('pcFlow'), pcBody: $('pcBody'),
+    pcLogo: $('pcLogo'), pcLogoBox: $('pcLogoBox'), pcWatermark: $('pcWatermark'),
     imageDrop: $('imageDrop'), imageInput: $('imageInput'), imageCard: $('imageCard'),
     imageThumb: $('imageThumb'), imageName: $('imageName'), imageSize: $('imageSize'),
     imageRemove: $('imageRemove'),
@@ -243,15 +258,23 @@
       'post-canvas',
       state.image ? 'has-image' : '',
       state.ink === 'dark' ? 'ink-dark' : '',
+      'tpos-' + state.textPos,
+      'talign-' + state.textAlign,
+      state.accentLightblue ? 'accent-lightblue' : '',
+      GRADIENTS[state.gradient] ? 'gradient-' + state.gradient : '',
+      state.watermark ? 'watermark-on' : '',
+      state.logoType === 'full' ? 'logo-full' : 'logo-mark',
       state.template === 'd' && state.plate !== 'none' ? 'plate-' + state.plate : '',
-      state.template === 'd' && state.dataAccent ? 'data-accent' : ''
+      state.template === 'd' && state.dataColor !== 'ink' ? 'data-' + state.dataColor : ''
     ].filter(Boolean).join(' ');
     if (c.className !== cls) c.className = cls;
 
     c.style.setProperty('--ov', (state.overlay / 100).toFixed(3));
+    c.style.setProperty('--wm', (state.watermarkOpacity / 100).toFixed(3));
+    c.style.setProperty('--grad-s', (state.gradientStrength / 100).toFixed(3));
 
-    var logo = logoSrc();
-    if (el.pcLogo.getAttribute('src') !== logo) el.pcLogo.setAttribute('src', logo);
+    renderLogo();
+    renderWatermark();
   }
 
   /* Tekst: typography.js bepaalt welk veld in welk niveau (65/41/26/16pt)
@@ -294,20 +317,34 @@
     setRadio('focus', state.focus);
     setRadio('headSize', state.headSize);
     setRadio('ink', state.ink);
+    setRadio('textPos', state.textPos);
+    setRadio('textAlign', state.textAlign);
+    setRadio('gradient', state.gradient);
+    setRadio('logoType', state.logoType);
     setRadio('logoVariant', state.logoVariant);
     setRadio('plate', state.plate);
+    setRadio('dataColor', state.dataColor);
     setRadio('format', state.format);
 
     setVal($('overlay'), state.overlay);
     setVal($('zoom'), state.zoom);
+    setVal($('gradientStrength'), state.gradientStrength);
+    setVal($('watermarkOpacity'), state.watermarkOpacity);
     setVal($('exportScale'), state.exportScale);
     Object.keys(fieldEls).forEach(function (k) { setVal(fieldEls[k], state[k]); });
 
     setChecked($('autoFit'), state.autoFit);
-    setChecked($('dataAccent'), state.dataAccent);
+    setChecked($('accentLightblue'), state.accentLightblue);
+    setChecked($('watermark'), state.watermark);
 
     setText($('overlayVal'), state.overlay + '%');
     setText($('zoomVal'), state.zoom + '%');
+    setText($('watermarkOpacityVal'), state.watermarkOpacity + '%');
+    setText($('gradientStrengthVal'), state.gradientStrength + '%');
+    var wmField = $('watermarkOpacityField');
+    if (wmField) wmField.hidden = !state.watermark;
+    var gsField = $('gradientStrengthField');
+    if (gsField) gsField.hidden = !GRADIENTS[state.gradient];
 
     // Velden en opties die alleen bij bepaalde templates horen (data-only="d")
     Array.prototype.forEach.call(document.querySelectorAll('[data-only]'), function (node) {
@@ -438,42 +475,163 @@
   }
 
   /* ===========================================================================
-     5. LOGO
+     5. LOGO & WATERMERK — inline SVG met dynamische vulkleur
      -----------------------------------------------------------------------
-     De merklogo's zijn SVG's zonder width/height-attribuut. html2canvas laat
-     zo'n SVG in de export leeg, terwijl de preview hem wel toont. Daarom
-     wordt elke variant één keer gerasteriseerd naar een PNG-data-URL en
-     daarna in de <img> gezet: preview en export tonen dan hetzelfde.
-     ========================================================================= */
-  var logoCache = {};      // variant -> PNG data-URL
-  var logoPending = {};
+     Preview: het logo en het grote watermerk staan als inline <svg> in het
+     canvas. De vulkleur wordt als fill-attribuut op de paden gezet, zodat
+     het logo direct meekleurt met de gekozen gradient (Logokleur: Auto).
 
-  function logoSrc() {
-    var v = LOGOS[state.logoVariant] ? state.logoVariant : DEFAULTS.logoVariant;
-    if (logoCache[v]) return logoCache[v];
-    prepareLogo(v);
-    return LOGOS[v].file;   // tot de PNG klaar is: het SVG-bestand zelf (preview)
+     Export: html2canvas serialiseert een inline SVG los van de pagina en
+     rendert hem niet altijd scherp. Daarom wordt per (bestand, kleur) één
+     PNG gerasteriseerd en in de gekloonde DOM (onclone) op de plek van de
+     SVG gezet: preview en export tonen exact hetzelfde.
+
+     Het SVG-bestand wordt één keer opgehaald; de fills uit het <style>-blok
+     worden naar attributen omgezet zodat herkleuren en serialiseren werken.
+     ========================================================================= */
+  var svgDocs = {};        // bestand -> <svg> (sjabloon met originele fills)
+  var svgPending = {};     // bestand -> Promise
+  var rasterCache = {};    // sleutel -> PNG data-URL
+  var rasterPending = {};  // sleutel -> Promise
+
+  /* Welk bestand en welke kleur het hoofdlogo nu krijgt.
+     color = null: de originele kleuren van het bestand (officiële variant). */
+  function logoSpec() {
+    var variant = state.logoVariant;
+    var gradient = GRADIENTS[state.gradient];
+    var isMark = state.logoType !== 'full';
+    var color = null;
+
+    if (variant === 'auto') {
+      // Template D zet het logo linksboven, precies waar de gradient dekkend
+      // is; een meekleurend logo zou daar wegvallen -> wit.
+      color = gradient && state.template !== 'd' ? gradient.ink : '#ffffff';
+      variant = 'white';
+    } else if (isMark) {
+      color = LOGOS[variant].mark;
+    }
+    var file = isMark ? MARK_FILE : LOGOS[variant].file;
+    return { file: file, color: color, key: file + '|' + (color || 'origineel'), edge: LOGO_RASTER_EDGE };
   }
 
-  function rasterizeSvg(svgText) {
-    var doc = new DOMParser().parseFromString(svgText, 'image/svg+xml');
+  function watermarkSpec() {
+    return { file: MARK_FILE, color: WATERMARK_INK, key: MARK_FILE + '|wm|' + WATERMARK_INK, edge: WATERMARK_RASTER_EDGE };
+  }
+
+  /* SVG-tekst -> <svg>-element met fills als attribuut (CSS-classes uit het
+     bestand weg), zonder vaste width/height. */
+  function parseSvg(text) {
+    var doc = new DOMParser().parseFromString(text, 'image/svg+xml');
     var root = doc.documentElement;
     if (!root || root.nodeName.toLowerCase() !== 'svg' || doc.querySelector('parsererror')) {
-      return Promise.reject(new Error('Ongeldige SVG'));
+      throw new Error('Ongeldige SVG');
     }
+
+    // .cls-1 { fill: #fff } -> fills['cls-1'] = '#fff'
+    var fills = {};
+    Array.prototype.forEach.call(root.querySelectorAll('style'), function (style) {
+      String(style.textContent || '').replace(/\.([\w-]+)\s*\{[^}]*?fill\s*:\s*([^;}]+)/g, function (m, cls, color) {
+        fills[cls] = color.trim();
+        return m;
+      });
+      style.parentNode.removeChild(style);
+    });
+    Array.prototype.forEach.call(root.querySelectorAll('[class]'), function (node) {
+      node.getAttribute('class').split(/\s+/).forEach(function (cls) {
+        if (fills[cls] && !node.getAttribute('fill')) node.setAttribute('fill', fills[cls]);
+      });
+      node.removeAttribute('class');
+    });
+
     var vb = (root.getAttribute('viewBox') || '').trim().split(/[\s,]+/).map(parseFloat);
     var w = parseFloat(root.getAttribute('width')) || 0;
     var h = parseFloat(root.getAttribute('height')) || 0;
-    if (vb.length === 4 && vb[2] > 0 && vb[3] > 0) { w = w || vb[2]; h = h || vb[3]; }
-    if (!(w > 0 && h > 0)) { w = w || 512; h = h || 512; }
-    if (!root.getAttribute('viewBox')) root.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+    if (!(vb.length === 4 && vb[2] > 0 && vb[3] > 0)) {
+      vb = [0, 0, w || 512, h || 512];
+      root.setAttribute('viewBox', vb.join(' '));
+    }
+    ['id', 'data-name', 'xml:space'].forEach(function (a) { root.removeAttribute(a); });
+    /* Expliciete width/height uit de viewBox: dan heeft de inline SVG een
+       intrinsieke verhouding en werkt `height: auto` overal hetzelfde —
+       zonder dit wordt het logo in Template B 0px hoog. */
+    root.setAttribute('width', vb[2]);
+    root.setAttribute('height', vb[3]);
+    return root;
+  }
 
-    var f = LOGO_RASTER_EDGE / Math.max(w, h);
+  var logoNoticeShown = false;
+  function loadSvg(file) {
+    if (svgDocs[file]) return Promise.resolve(svgDocs[file]);
+    if (svgPending[file]) return svgPending[file];
+    svgPending[file] = fetchText(file)
+      .then(parseSvg)
+      .then(function (root) { svgDocs[file] = root; return root; })
+      .catch(function (err) {
+        delete svgPending[file];
+        if (IS_FILE && !logoNoticeShown) {
+          logoNoticeShown = true;
+          showEnvNotice('Het logo komt niet in de export', fileNoticeHtml());
+        }
+        throw err;
+      });
+    return svgPending[file];
+  }
+  /* Kopie van het sjabloon, optioneel egaal hergekleurd (fill op elke vorm) */
+  function instantiateSvg(root, color, id) {
+    var svg = document.importNode(root, true);
+    if (color) {
+      Array.prototype.forEach.call(svg.querySelectorAll('path, polygon, polyline, circle, ellipse, rect, g'), function (node) {
+        node.setAttribute('fill', color);
+      });
+    }
+    if (id) svg.setAttribute('id', id);
+    svg.setAttribute('focusable', 'false');
+    svg.setAttribute('aria-hidden', 'true');
+    return svg;
+  }
+
+  /* Inline SVG in een container zetten; alleen opnieuw als de sleutel wijzigt.
+     Zonder geladen SVG (file://) blijft de <img> zichtbaar met het bestand. */
+  function mountSvg(box, spec, id, fallbackImg) {
+    if (!box) return;
+    if (box.getAttribute('data-key') === spec.key) return;
+
+    var root = svgDocs[spec.file];
+    if (!root) {
+      loadSvg(spec.file).then(scheduleRender).catch(noop);
+      if (fallbackImg) {
+        if (fallbackImg.getAttribute('src') !== spec.file) fallbackImg.setAttribute('src', spec.file);
+        fallbackImg.hidden = false;
+      }
+      return;
+    }
+    var old = box.querySelector('svg');
+    if (old) box.removeChild(old);
+    box.appendChild(instantiateSvg(root, spec.color, id));
+    if (fallbackImg) fallbackImg.hidden = true;
+    box.setAttribute('data-key', spec.key);
+  }
+
+  function renderLogo() {
+    mountSvg(el.pcLogoBox, logoSpec(), 'pcLogoSvg', el.pcLogo);
+  }
+
+  function renderWatermark() {
+    if (!state.watermark) return;   // CSS verbergt de laag; niets laden
+    mountSvg(el.pcWatermark, watermarkSpec(), 'pcWatermarkSvg', null);
+  }
+
+  /* <svg> -> PNG data-URL met de langste zijde op `edge` px */
+  function rasterizeSvg(svg, edge) {
+    var vb = svg.getAttribute('viewBox').split(/[\s,]+/).map(parseFloat);
+    var w = vb[2], h = vb[3];
+    var f = edge / Math.max(w, h);
     var pw = Math.max(1, Math.round(w * f)), ph = Math.max(1, Math.round(h * f));
-    root.setAttribute('width', pw);
-    root.setAttribute('height', ph);
+    svg.setAttribute('width', pw);
+    svg.setAttribute('height', ph);
+    svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
 
-    var src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(new XMLSerializer().serializeToString(root));
+    var src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(new XMLSerializer().serializeToString(svg));
     return loadImage(src).then(function (img) {
       var cv = document.createElement('canvas');
       cv.width = pw; cv.height = ph;
@@ -482,23 +640,26 @@
     });
   }
 
-  var logoNoticeShown = false;
-  function prepareLogo(variant) {
-    if (logoPending[variant]) return logoPending[variant];
-    logoPending[variant] = fetchText(LOGOS[variant].file)
-      .then(rasterizeSvg)
-      .then(function (png) {
-        logoCache[variant] = png;
-        scheduleRender();
-      })
-      .catch(function () {
-        delete logoPending[variant];
-        if (IS_FILE && !logoNoticeShown) {
-          logoNoticeShown = true;
-          showEnvNotice('Het logo komt niet in de export', fileNoticeHtml());
-        }
-      });
-    return logoPending[variant];
+  /* PNG voor de export klaarzetten (één keer per bestand + kleur) */
+  function prepareRaster(spec) {
+    if (rasterCache[spec.key]) return Promise.resolve(rasterCache[spec.key]);
+    if (rasterPending[spec.key]) return rasterPending[spec.key];
+    rasterPending[spec.key] = loadSvg(spec.file)
+      .then(function (root) { return rasterizeSvg(instantiateSvg(root, spec.color, null), spec.edge); })
+      .then(function (png) { rasterCache[spec.key] = png; return png; })
+      .catch(function (err) { delete rasterPending[spec.key]; throw err; });
+    return rasterPending[spec.key];
+  }
+
+  /* In de gekloonde DOM van html2canvas: inline SVG -> <img> met de PNG */
+  function swapSvgInClone(doc, id, png) {
+    var svg = doc.getElementById(id);
+    if (!svg || !png) return;
+    var img = doc.createElement('img');
+    img.src = png;
+    img.alt = '';
+    img.style.cssText = 'display:block;width:100%;height:auto';
+    if (svg.parentNode) svg.parentNode.replaceChild(img, svg);
   }
 
   /* ===========================================================================
@@ -809,7 +970,7 @@
       btn.dataset.panel = title;
       var icon = panel.querySelector('.panel__head .ico');
       if (icon) btn.appendChild(icon.cloneNode(true));
-      btn.appendChild(document.createTextNode(title.replace('Logo & kleurvlak', 'Logo').replace('AI-assistent', 'AI')));
+      btn.appendChild(document.createTextNode(title.replace('Logo & watermerk', 'Logo').replace('AI-assistent', 'AI')));
       btn.addEventListener('click', function () { openPanel(panel, true); });
       el.mobileNav.appendChild(btn);
       panel.addEventListener('toggle', updateMobileNav);
@@ -908,15 +1069,23 @@
     bindRadio('focus', 'focus');
     bindRadio('headSize', 'headSize');
     bindRadio('ink', 'ink');
+    bindRadio('textPos', 'textPos');
+    bindRadio('textAlign', 'textAlign');
+    bindRadio('gradient', 'gradient');
+    bindRadio('logoType', 'logoType');
     bindRadio('logoVariant', 'logoVariant');
     bindRadio('plate', 'plate');
+    bindRadio('dataColor', 'dataColor');
     bindRadio('format', 'format');
 
     bindRange('overlay', 'overlay');
     bindRange('zoom', 'zoom');
+    bindRange('gradientStrength', 'gradientStrength');
+    bindRange('watermarkOpacity', 'watermarkOpacity');
 
     bindCheck('autoFit', 'autoFit');
-    bindCheck('dataAccent', 'dataAccent');
+    bindCheck('accentLightblue', 'accentLightblue');
+    bindCheck('watermark', 'watermark');
 
     /* Tekstvelden -> state */
     Object.keys(fieldEls).forEach(function (k) {
@@ -1053,9 +1222,14 @@
   function renderToCanvas(mime) {
     var mult = parseInt(state.exportScale, 10) || 1;
     var fontsReady = (document.fonts && document.fonts.ready) ? document.fonts.ready : Promise.resolve();
-    var logoReady = logoCache[state.logoVariant] ? Promise.resolve() : prepareLogo(state.logoVariant);
 
-    return Promise.all([fontsReady, logoReady])
+    /* PNG's van logo en watermerk klaarzetten; mislukt dat (file://), dan
+       blijft de inline SVG staan en probeert html2canvas die zelf. */
+    var logo = logoSpec();
+    var wm = state.watermark ? watermarkSpec() : null;
+    var rasters = [prepareRaster(logo).catch(noop), wm ? prepareRaster(wm).catch(noop) : Promise.resolve()];
+
+    return Promise.all([fontsReady].concat(rasters))
       .then(function () {
         flushRender();
         return settle();
@@ -1075,6 +1249,8 @@
           onclone: function (doc) {
             var empty = doc.getElementById('pcEmpty');
             if (empty) empty.style.display = 'none';
+            swapSvgInClone(doc, 'pcLogoSvg', rasterCache[logo.key]);
+            if (wm) swapSvgInClone(doc, 'pcWatermarkSvg', rasterCache[wm.key]);
           }
         });
       })
@@ -1140,7 +1316,7 @@
 
     var mime = (toClipboard || state.format === 'png') ? 'image/png' : 'image/jpeg';
     var ext = mime === 'image/png' ? 'png' : 'jpg';
-    var logoLost = !logoCache[state.logoVariant] && IS_FILE;
+    var logoLost = IS_FILE && !svgDocs[logoSpec().file];
 
     setBusy(true);
 
@@ -1194,10 +1370,17 @@
       if (saved[k] !== undefined && saved[k] !== null && typeof saved[k] === typeof DEFAULTS[k]) state[k] = saved[k];
     });
     if (!TYPO.TEMPLATES[state.template]) state.template = DEFAULTS.template;
-    if (!LOGOS[state.logoVariant]) state.logoVariant = DEFAULTS.logoVariant;
+    if (state.logoVariant !== 'auto' && !LOGOS[state.logoVariant]) state.logoVariant = DEFAULTS.logoVariant;
+    if (['mark', 'full'].indexOf(state.logoType) === -1) state.logoType = DEFAULTS.logoType;
+    if (state.gradient !== 'none' && !GRADIENTS[state.gradient]) state.gradient = DEFAULTS.gradient;
+    state.watermarkOpacity = clamp(state.watermarkOpacity, 5, 60);
+    state.gradientStrength = clamp(state.gradientStrength, 20, 100);
     if (['none', 'navy', 'blue'].indexOf(state.plate) === -1) state.plate = DEFAULTS.plate;
+    if (['ice', 'ink', 'orange'].indexOf(state.dataColor) === -1) state.dataColor = DEFAULTS.dataColor;
     if (['h1', 'h2'].indexOf(state.headSize) === -1) state.headSize = DEFAULTS.headSize;
     if (['light', 'dark'].indexOf(state.ink) === -1) state.ink = DEFAULTS.ink;
+    if (['top', 'middle', 'bottom'].indexOf(state.textPos) === -1) state.textPos = DEFAULTS.textPos;
+    if (['left', 'center'].indexOf(state.textAlign) === -1) state.textAlign = DEFAULTS.textAlign;
     if (['top', 'center', 'bottom'].indexOf(state.focus) === -1) state.focus = DEFAULTS.focus;
     state.overlay = clamp(state.overlay, 0, 90);
     state.zoom = clamp(state.zoom, 100, 180);

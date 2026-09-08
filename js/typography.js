@@ -174,7 +174,7 @@ window.SPEEDSTAR.typo = (function () {
 
   /* fields: { kicker, title, intro, data, accents } (platte strings; accents
      mag string of array zijn). Geeft de innerHTML van .pc-flow terug, in de
-     vaste volgorde data -> bovenkop -> hoofdkop -> inleiding (§3). Lege velden
+     vaste volgorde bovenkop -> hoofdkop -> inleiding -> data. Lege velden
      worden overgeslagen zodat de CSS-ritmiek (h3 + h2, h2 + p) klopt. */
   function buildFlow(fields, template, opts) {
     var f = fields || {};
@@ -189,11 +189,14 @@ window.SPEEDSTAR.typo = (function () {
 
     var data = String(f.data || '').trim();
 
+    /* Volgorde volgens het Canva-ontwerp (pagina 10): eerst de tekst, dan het
+       data-element eronder. De styleguide zet het cijfer eerst; het ontwerp is
+       leidend. */
     return [
-      lv.data   ? element(lv.data, escapeHtml(data)) : '',
       lv.kicker ? element(lv.kicker, applyAccents(kicker.text.trim(), accents)) : '',
       lv.title  ? element(lv.title,  applyAccents(title.text.trim(),  accents)) : '',
-      lv.intro  ? element(lv.intro,  applyAccents(intro.text.trim(),  accents)) : ''
+      lv.intro  ? element(lv.intro,  applyAccents(intro.text.trim(),  accents)) : '',
+      lv.data   ? element(lv.data, escapeHtml(data)) : ''
     ].join('');
   }
 

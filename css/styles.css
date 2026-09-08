@@ -18,7 +18,13 @@
   /* 1.1 Canvas */
   --canvas-w:   1080;      /* px */
   --canvas-h:   1350;      /* px, 4:5 */
-  --safe-zone:  60;        /* px marge rondom voor tekst en logo */
+
+  /* Marge rondom tekst en logo. De styleguide noemt 60px als safe-zone, maar
+     alle referentieposts (assets/Insta-Post-Voorbeelden) zijn opgemeten op
+     108px = 10% van 1080: tekst begint links op 108 en het beeldmerk staat
+     108px van de rechter- en onderrand. 60px blijft het absolute minimum. */
+  --safe-zone:     108;
+  --safe-zone-min: 60;
 
   /* 1.2 Typografie */
   --font-primary:        'Allumi Std', 'Inter', system-ui, sans-serif;
@@ -33,7 +39,8 @@
   --color-brand-blue-rgb: 48, 91, 173;
 
   /* 1.3 Kleurpalet — secundair / accent */
-  --color-accent-lightblue: #96bed6;
+  --color-accent-lightblue:     #96bed6;
+  --color-accent-lightblue-rgb: 150, 190, 214;
   --color-accent-ice:       #ccdbdb;
   --color-accent-peach:     #e5b9ae;
   --color-accent-coral:     #d97d60;
@@ -44,17 +51,58 @@
   --color-text-dark:  #221f5e;
   --overlay-dark:     rgba(34, 31, 94, .4);
 
-  /* §2 Typografische hiërarchie (pt op het 1080-canvas, factor 1,6) */
-  --fs-h1:    65;      /* Heading 1 — extra groot, maximale impact */
-  --fs-h2:    41;      /* Heading 2 — hoofdkop */
-  --fs-h3:    26;      /* Heading 3 — bovenkop */
-  --fs-intro: 16;      /* Inleiding / sub-heading */
-  --fs-data:  104;     /* Data-element (Template D): 65 × 1,6 — één stap boven H1 */
-  --lh-heading: 1.1;
-  --lh-intro:   1.3;
+  /* §2 Typografische hiërarchie — maten uit het Canva-bronontwerp.
+     Let op: dat ontwerp gebruikt een font met andere metriek dan onze Allumi
+     Std (kapitaalhoogte 0,771em tegen 0,665em). Dezelfde puntgrootte valt bij
+     ons dus ~10% kleiner uit; hieronder staan de omgerekende maten, waarbij de
+     letters even groot ogen als in het ontwerp. */
+  --fs-h1:    56;      /* Heading 1 — extra groot (stap boven het statement) */
+  --fs-h2:    42;      /* Heading 2 — hoofdkop; ontwerp 37,8pt */
+  --fs-h3:    26;      /* Heading 3 — bovenkop; ontwerp 23,8pt */
+  --fs-intro: 14;      /* Inleiding; ontwerp 12,7pt */
+  --fs-data:  230;     /* Data-element; ontwerp 198,5pt, cijferhoogte 204px */
+
+  /* Regelafstand: de absolute regelafstanden uit het ontwerp gedeeld door onze
+     korpsgroottes. Kop 76px bij 56px, statement 89px bij 65px, dataregel 60px
+     bij 45px; inleiding 34px bij 19px. De styleguide noemt 1,1 en 1,3; die
+     waarden komen op geen van de tien ontwerppagina's voor. */
+  --lh-heading: 1.35;
+  --lh-intro:   1.8;
+
+  /* Letterspatiëring: de Event & Wishes-pagina's (1-6) staan op 0,2em, de
+     statement- en datapagina's (7-10) op 0. */
+  --track-a: .2em;
+
+  /* Breedte van de tekstkolom (px op 1080). Pagina 1-6 houden de tekst in de
+     linkerhelft (langste regel 478px); de statementpagina's lopen door tot
+     836px en gebruiken dus de volle breedte binnen de marge. */
+  --text-col-a: 640;
+  /* De inleiding krijgt een smallere kolom dan de koppen: de regels eindigen
+     dan rond het midden van het canvas (108 + 440 = 548), net als op pagina
+     1-6 van het ontwerp, waar de inleiding in drie korte regels valt. */
+  --text-col-a-intro: 440;
 
   /* Logo op het canvas (breedte in px op 1080; Template B gebruikt 80%) */
-  --logo-w: 240;
+  --logo-w: 240;       /* volledig logo (woordmerk) */
+  --mark-w: 148.5;     /* beeldmerk (S met ster) — maat uit het Canva-ontwerp */
+
+  /* De gradient-overlays zelf staan bij .pc-gradient (§6). Ze mogen niet in
+     :root staan: een custom property die var(--grad-s) bevat wordt namelijk
+     al op :root ingevuld, en de sterkte die app.js op het canvas zet zou dan
+     nooit doorwerken. */
+
+  /* Groot watermerk: beeldmerk 150% van de canvasbreedte, exact gecentreerd.
+     De tekening vult de viewBox volledig (bbox 0 0 1080 891,02), dus het
+     midden van de viewBox is ook het optische midden.
+     Hoogte = breedte × 891,02 / 1080. */
+  --watermark-w: 1663;
+  --watermark-h: 1372;
+  --watermark-opacity: .2;
+  /* In het Canva-ontwerp staat het watermerk niet in het midden maar 210px
+     naar links en 11px omlaag. Op verzoek staat het hier wél gecentreerd;
+     zet deze twee op -210 en 11 voor de uitsnede van het ontwerp. */
+  --watermark-x: 0;
+  --watermark-y: 0;
 }
 
 
@@ -344,6 +392,7 @@ select option { background: var(--surface-2); }
 .seg { position: relative; display: grid; gap: 6px; background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 4px; }
 .seg--2 { grid-template-columns: repeat(2, 1fr); }
 .seg--3 { grid-template-columns: repeat(3, 1fr); }
+.seg--4 { grid-template-columns: repeat(4, 1fr); }
 .seg input { position: absolute; top: 0; left: 0; width: 1px; height: 1px; margin: 0; opacity: 0; pointer-events: none; }
 .seg label {
   display: flex;
@@ -374,6 +423,8 @@ select option { background: var(--surface-2); }
   border-radius: 3px;
   border: 1px solid rgba(255,255,255,.22);
 }
+/* "Auto": wit of de gradientkleur */
+.seg label .sw--auto { background: linear-gradient(135deg, #fff 0 34%, #96bed6 34% 67%, #305bad 67%); }
 
 /* --- Sliders --- */
 input[type="range"] {
@@ -769,6 +820,7 @@ input[type="range"]::-moz-range-thumb { width: 13px; height: 13px; border-radius
      --safe  60px safe-zone op schermmaat
      --ov    sterkte van de navy overlay (0–1), standaard .4 = --overlay-dark
      --ink   tekstkleur: wit op foto's, navy op lichte achtergronden
+     --wm    opacity van het grote watermerk (app.js, slider)
    ============================================================================= */
 .post-canvas {
   position: relative;
@@ -778,6 +830,8 @@ input[type="range"]::-moz-range-thumb { width: 13px; height: 13px; border-radius
   --u: .5;
   --fit: 1;
   --ov: .4;
+  --wm: var(--watermark-opacity);
+  --grad-s: 1;
   --ink: var(--color-text-light);
 
   --pt:   calc(var(--u) * var(--fit) * 1.33333px);
@@ -810,6 +864,56 @@ input[type="range"]::-moz-range-thumb { width: 13px; height: 13px; border-radius
   background: rgba(var(--color-brand-navy-rgb), var(--ov));
 }
 
+/* --- Laag 1b: gradient-overlay (merkverloop, 135° vanuit linksboven) ---
+   Ligt óver de navy overlay; zonder keuze is de laag leeg. */
+.pc-gradient {
+  position: absolute; inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+/* Merkverloop, 1-op-1 uit het Canva-ontwerp: dekkend linksboven, 20% halver-
+   wege, volledig transparant (#fa4e1d) rechtsonder. De SVG in het ontwerp loopt
+   van (-68, 68) naar (1149, 1283) op het 1080x1350-vlak; CSS 135deg geeft exact
+   dezelfde lijn. --grad-s schaalt beide stops: 1 = de tekstpagina's, 0,6 = de
+   zachtere variant van de beeldpagina's. */
+.post-canvas.gradient-lightblue .pc-gradient {
+  background: linear-gradient(135deg,
+    rgba(var(--color-accent-lightblue-rgb), var(--grad-s)) 0%,
+    rgba(var(--color-accent-lightblue-rgb), calc(var(--grad-s) * .2)) 50%,
+    rgba(250, 78, 29, 0) 100%);
+}
+.post-canvas.gradient-blue .pc-gradient {
+  background: linear-gradient(135deg,
+    rgba(var(--color-brand-blue-rgb), var(--grad-s)) 0%,
+    rgba(var(--color-brand-blue-rgb), calc(var(--grad-s) * .2)) 50%,
+    rgba(250, 78, 29, 0) 100%);
+}
+.post-canvas.gradient-navy .pc-gradient {
+  background: linear-gradient(135deg,
+    rgba(var(--color-brand-navy-rgb), var(--grad-s)) 0%,
+    rgba(var(--color-brand-navy-rgb), calc(var(--grad-s) * .2)) 50%,
+    rgba(250, 78, 29, 0) 100%);
+}
+
+/* --- Laag 1c: groot watermerk — beeldmerk 150% breed, gecentreerd, subtiel ---
+   Inline SVG (preview) of PNG (export) met dezelfde maat; opacity via --wm.
+   Geen mix-blend-mode: html2canvas kent het niet en de export zou afwijken. */
+.pc-watermark {
+  position: absolute;
+  z-index: 1;
+  display: none;
+  width:  calc(var(--u) * var(--watermark-w) * 1px);
+  height: calc(var(--u) * var(--watermark-h) * 1px);
+  /* Exact gecentreerd zonder transform: html2canvas rendert calc-posities
+     betrouwbaarder dan translate(). */
+  left: calc(50% - var(--u) * (var(--watermark-w) * .5 - var(--watermark-x)) * 1px);
+  top:  calc(50% - var(--u) * (var(--watermark-h) * .5 - var(--watermark-y)) * 1px);
+  opacity: var(--wm);
+  pointer-events: none;
+}
+.post-canvas.watermark-on .pc-watermark { display: block; }
+.pc-watermark svg, .pc-watermark img { display: block; width: 100%; height: 100%; }
+
 /* --- Laag 2: tekstcontainer, altijd binnen de safe-zone --- */
 .pc-content {
   position: absolute;
@@ -835,21 +939,32 @@ input[type="range"]::-moz-range-thumb { width: 13px; height: 13px; border-radius
   overflow-wrap: break-word;
 }
 
-.pc-flow h1,  .ss-h1    { font-size: calc(var(--fs-h1) * var(--pt));    line-height: var(--lh-heading); font-weight: var(--font-weight-bold); }
-.pc-flow h2,  .ss-h2    { font-size: calc(var(--fs-h2) * var(--pt));    line-height: var(--lh-heading); font-weight: var(--font-weight-bold); }
-.pc-flow h3,  .ss-h3    { font-size: calc(var(--fs-h3) * var(--pt));    line-height: var(--lh-heading); font-weight: var(--font-weight-bold); }
-.pc-flow p,   .ss-intro { font-size: calc(var(--fs-intro) * var(--pt)); line-height: var(--lh-intro);   font-weight: var(--font-weight-demi); }
+/* Alles staat in het ontwerp in Allumi Std Regular (400); alleen de
+   accentwoorden zijn Bold Italic. --fs-title is per template anders. */
+.post-canvas            { --fs-title: var(--fs-h2); }
+[data-template="c"]     { --fs-title: 49; }   /* ontwerp pagina 7-8: 44,2pt */
+[data-template="d"]     { --fs-title: 34; }   /* ontwerp pagina 9-10: 30,4pt */
 
-/* Verticale ritmiek: bovenkop -> hoofdkop strak, hoofdkop -> inleiding ruimer */
-.pc-flow h3 + h2, .pc-flow h3 + h1 { margin-top: calc(6 * var(--pt)); }
-.pc-flow h2 + p,  .pc-flow h1 + p  { margin-top: calc(14 * var(--pt)); }
-.pc-flow p + p                     { margin-top: calc(8 * var(--pt)); }
+.pc-flow h1,  .ss-h1    { font-size: calc(var(--fs-h1) * var(--pt));    line-height: var(--lh-heading); font-weight: var(--font-weight-regular); }
+.pc-flow h2,  .ss-h2    { font-size: calc(var(--fs-title) * var(--pt)); line-height: var(--lh-heading); font-weight: var(--font-weight-regular); }
+.pc-flow h3,  .ss-h3    { font-size: calc(var(--fs-h3) * var(--pt));    line-height: var(--lh-heading); font-weight: var(--font-weight-regular); }
+.pc-flow p,   .ss-intro { font-size: calc(var(--fs-intro) * var(--pt)); line-height: var(--lh-intro);   font-weight: var(--font-weight-regular); }
+.ss-h2                  { font-size: calc(var(--fs-h2) * var(--pt)); }   /* buiten het canvas */
 
-/* Accenten: Bold Italic, kleur overgeërfd (§2) */
+/* Verticale ritmiek uit het ontwerp: bovenkop en hoofdkop sluiten op elkaar
+   aan (gat 1px), tussen hoofdkop en inleiding zit ~6px. */
+.pc-flow h3 + h2, .pc-flow h3 + h1 { margin-top: 0; }
+.pc-flow h2 + p,  .pc-flow h1 + p  { margin-top: calc(5 * var(--pt)); }
+.pc-flow p + p                     { margin-top: calc(6 * var(--pt)); }
+
+/* Accenten: Bold Italic, kleur overgeërfd (§2); optioneel lichtblauw zoals
+   in de voorbeeldposts (.accent-lightblue) */
 .pc-flow strong, .pc-flow em, .ss-accent {
   font-weight: var(--font-weight-bold);
   font-style: italic;
 }
+.post-canvas.accent-lightblue .pc-flow em,
+.post-canvas.accent-lightblue .ss-accent { color: var(--color-accent-lightblue); }
 
 /* Lege velden nemen geen ruimte in */
 .pc-flow > :empty { display: none; }
@@ -863,15 +978,26 @@ input[type="range"]::-moz-range-thumb { width: 13px; height: 13px; border-radius
   letter-spacing: -.01em;
   font-variant-numeric: tabular-nums;
 }
-.post-canvas.data-accent .pc-data { color: var(--color-accent-orange); }
+/* Kleur van het data-element. Het ontwerp (pagina 10) zet het cijfer in
+   ijsblauw #ccdbdb: een zacht, bijna watermerkachtig getal. */
+.post-canvas.data-ice    .pc-data { color: var(--color-accent-ice); }
+.post-canvas.data-orange .pc-data { color: var(--color-accent-orange); }
 
-/* --- Laag 3: logo — positie per template (§3) --- */
+/* --- Laag 3: logo — positie per template (§3) ---
+   Inline SVG met dynamische vulkleur (app.js); de <img> is de terugvaloptie.
+   .logo-mark = beeldmerk (S), .logo-full = volledig logo. */
 .pc-logo {
   position: absolute;
   z-index: 3;
   width: calc(var(--u) * var(--logo-w) * 1px);
 }
-.pc-logo img { display: block; width: 100%; height: auto; }
+.post-canvas.logo-mark:not([data-template="b"]) .pc-logo { width: calc(var(--u) * var(--mark-w) * 1px); }
+
+.pc-logo img, .pc-logo svg { display: block; width: 100%; height: auto; }
+
+/* Met het grote watermerk vervalt het kleine logo (voorbeeldpost 21);
+   het grote logo van Template B blijft. */
+.post-canvas.watermark-on:not([data-template="b"]) .pc-logo { display: none; }
 
 /* --- Empty state (alleen zonder foto; nooit in de export) --- */
 .pc-empty {
@@ -900,8 +1026,28 @@ input[type="range"]::-moz-range-thumb { width: 13px; height: 13px; border-radius
    7. TEMPLATES A, B, C, D (§3) — gekozen via data-template op .post-canvas
    ============================================================================= */
 
-/* --- Template A: Event & Wishes — links uitgelijnd, verticaal gecentreerd ---
-   Overlay: navy, van onder (sterk) naar boven (weg). Logo rechtsonder. */
+/* --- Plaatsing van het tekstblok binnen de safe-zone ---
+   De referentieposts zetten het tekstblok linksboven tegen de safe-zone aan
+   (15-17, 21, 22) of iets lager (23, 24), altijd links uitgelijnd. Deze
+   modifiers sturen dat; ze staan ná de templateregels zodat ze altijd winnen. */
+.post-canvas .pc-body { justify-content: flex-start; align-items: flex-start; text-align: left; }
+.post-canvas.tpos-top    .pc-body { justify-content: flex-start; }
+.post-canvas.tpos-middle .pc-body { justify-content: center; }
+.post-canvas.tpos-bottom .pc-body { justify-content: flex-end; }
+.post-canvas.talign-left   .pc-body { align-items: flex-start; text-align: left; }
+.post-canvas.talign-center .pc-body { align-items: center; text-align: center; }
+
+/* --- Template A: Event & Wishes — links uitgelijnd, tegen de bovenmarge ---
+   Overlay: navy, van onder (sterk) naar boven (weg). Logo rechtsonder.
+   Getrackte typografie (§ tokens --track-*), zoals in 15-17.jpg. */
+[data-template="a"] .pc-flow h1,
+[data-template="a"] .pc-flow h2,
+[data-template="a"] .pc-flow h3,
+[data-template="a"] .pc-flow p  { letter-spacing: var(--track-a); }
+[data-template="a"] .pc-flow    { max-width: calc(var(--u) * var(--text-col-a) * 1px); }
+[data-template="a"] .pc-flow p  { max-width: calc(var(--u) * var(--text-col-a-intro) * 1px); }
+[data-template="a"].talign-center .pc-flow p { margin-left: auto; margin-right: auto; }
+
 [data-template="a"] .pc-overlay {
   background: linear-gradient(to top,
     rgba(var(--color-brand-navy-rgb), var(--ov)) 0%,
@@ -909,12 +1055,11 @@ input[type="range"]::-moz-range-thumb { width: 13px; height: 13px; border-radius
     rgba(var(--color-brand-navy-rgb), calc(var(--ov) * .35)) 65%,
     rgba(var(--color-brand-navy-rgb), 0) 100%);
 }
-[data-template="a"] .pc-body { justify-content: center; align-items: flex-start; text-align: left; }
-[data-template="a"] .pc-flow { max-width: calc(var(--u) * 860px); }   /* ademruimte t.o.v. het logo */
 [data-template="a"] .pc-logo { right: var(--safe); bottom: var(--safe); }
 
-/* --- Template B: Brand Awareness — foto + groot gecentreerd logo (80%) ---
-   Geen tekst. Egale overlay (slider) zodat het witte logo blijft staan. */
+/* --- Template B: Brand Awareness — foto + groot logo, exact gecentreerd ---
+   Geen tekst. Het logo staat los van de safe-zone: de laag beslaat het hele
+   canvas en centreert de tekening met flexbox, horizontaal én verticaal. */
 [data-template="b"] .pc-content { display: none; }
 [data-template="b"] .pc-logo {
   inset: 0;
@@ -923,25 +1068,30 @@ input[type="range"]::-moz-range-thumb { width: 13px; height: 13px; border-radius
   align-items: center;
   justify-content: center;
 }
-[data-template="b"] .pc-logo img { width: 80%; }
+/* De tekening zelf wordt door de flexbox exact gecentreerd, ongeacht de hoogte.
+   Voorwaarde is dat de SVG een echte hoogte heeft: app.js zet daarom
+   width/height-attributen uit de viewBox op elke ingeladen SVG. */
+[data-template="b"] .pc-logo img, [data-template="b"] .pc-logo svg { width: 80%; height: auto; }
+/* Het beeldmerk is bijna vierkant: 50% breed weegt visueel als het woordmerk op 80% */
+[data-template="b"].logo-mark .pc-logo img, [data-template="b"].logo-mark .pc-logo svg { width: 50%; }
 
-/* --- Template C: Krachtige Statements — gecentreerd, zware overlay ---
-   Overlay nooit lichter dan .4; witte tekst, accenten Bold Italic. Logo rechtsonder. */
+/* --- Template C: Krachtige Statements — zware overlay ---
+   Overlay nooit lichter dan .4; accenten Bold Italic. Logo rechtsonder.
+   Positie en uitlijning komen van de .tpos-/.talign-modifiers. */
 [data-template="c"] .pc-overlay { background: rgba(var(--color-brand-navy-rgb), max(var(--ov), .4)); }
-[data-template="c"] .pc-body { justify-content: center; align-items: center; text-align: center; }
-[data-template="c"] .pc-flow { max-width: calc(var(--u) * 900px); }
 [data-template="c"] .pc-logo { right: var(--safe); bottom: var(--safe); }
 
-/* --- Template D: Data & Infographics — data-element + tekst gecentreerd ---
-   Logo linksboven (uitzondering). Optioneel solide merkkleurvlak achter de
-   inhoud (.plate-navy / .plate-blue): het vlak hugt de inhoud, safe-zone breed. */
-[data-template="d"] .pc-body { justify-content: center; align-items: center; text-align: center; }
+/* --- Template D: Data & Infographics — tekst met het data-element eronder ---
+   De styleguide zet het cijfer bóven de tekst en het logo linksboven; pagina 10
+   van het ontwerp doet het omgekeerd: tekst bovenaan, cijfer eronder en het
+   beeldmerk rechtsonder, net als op alle andere pagina's. Het ontwerp is hier
+   gevolgd. Optioneel solide merkkleurvlak achter de inhoud (.plate-navy /
+   .plate-blue): het vlak hugt de inhoud, safe-zone breed. */
 [data-template="d"] .pc-data { display: block; }
-[data-template="d"] .pc-data + h3,
-[data-template="d"] .pc-data + h2 { margin-top: calc(10 * var(--pt)); }
-[data-template="d"] .pc-flow h2 + p { margin-top: calc(10 * var(--pt)); }
-[data-template="d"] .pc-flow p { max-width: calc(var(--u) * 760px); margin-left: auto; margin-right: auto; }
-[data-template="d"] .pc-logo { top: var(--safe); left: var(--safe); }
+[data-template="d"] .pc-flow > * + .pc-data { margin-top: calc(16 * var(--pt)); }
+[data-template="d"] .pc-flow h2 + p { margin-top: calc(5 * var(--pt)); }
+[data-template="d"].talign-center .pc-flow p { max-width: calc(var(--u) * 760px); margin-left: auto; margin-right: auto; }
+[data-template="d"] .pc-logo { right: var(--safe); bottom: var(--safe); }
 
 [data-template="d"].plate-navy .pc-flow,
 [data-template="d"].plate-blue .pc-flow {

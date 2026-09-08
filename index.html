@@ -89,7 +89,7 @@
               <span class="tpls__txt"><b data-key="D">Data &amp; Infographic</b><i>Feiten, percentages</i></span>
             </label>
           </div>
-          <p class="hint">Altijd 1080 &times; 1350 (4:5), safe-zone 60px, Allumi Std, merkkleuren uit de merkhandleiding.</p>
+          <p class="hint">Altijd 1080 &times; 1350 (4:5), marge 108px zoals in de voorbeeldposts, Allumi Std, merkkleuren uit de merkhandleiding.</p>
         </div>
       </details>
 
@@ -127,6 +127,27 @@
           </div>
 
           <div class="field">
+            <span class="label">Gradient over de foto <i class="label__opt">135&deg; vanuit linksboven</i></span>
+            <div class="seg seg--4 seg--sm" role="radiogroup" aria-label="Gradient">
+              <input type="radio" name="gradient" id="gr-none" value="none" checked>
+              <label for="gr-none"><b>Geen</b></label>
+              <input type="radio" name="gradient" id="gr-lightblue" value="lightblue">
+              <label for="gr-lightblue"><span class="sw" style="background:linear-gradient(135deg,#96bed6,rgba(150,190,214,0))"></span><b>Licht</b></label>
+              <input type="radio" name="gradient" id="gr-blue" value="blue">
+              <label for="gr-blue"><span class="sw" style="background:linear-gradient(135deg,#305bad,rgba(48,91,173,0))"></span><b>Blauw</b></label>
+              <input type="radio" name="gradient" id="gr-navy" value="navy">
+              <label for="gr-navy"><span class="sw" style="background:linear-gradient(135deg,#221f5e,rgba(34,31,94,0))"></span><b>Navy</b></label>
+            </div>
+            <p class="hint">Kleurverloop uit het ontwerp: dekkend linksboven, transparant rechtsonder. Zet de navy overlay op 0% voor het zuivere effect. Met logokleur <b>Auto</b> kleurt het logo mee.</p>
+          </div>
+
+          <div class="field" id="gradientStrengthField" hidden>
+            <label class="label" for="gradientStrength">Gradient sterkte <output id="gradientStrengthVal">100%</output></label>
+            <input type="range" id="gradientStrength" min="20" max="100" step="1" value="100">
+            <p class="hint">100% is het verloop van de tekstpagina&rsquo;s, 60% de zachtere variant die het ontwerp op de beeldpagina&rsquo;s gebruikt.</p>
+          </div>
+
+          <div class="field">
             <label class="label" for="zoom">Beeldzoom <output id="zoomVal">100%</output></label>
             <input type="range" id="zoom" min="100" max="180" step="1" value="100">
           </div>
@@ -161,11 +182,11 @@
               <input type="text" id="fKicker" placeholder="1 May 2026" maxlength="60" autocomplete="off">
             </div>
             <div class="field">
-              <label class="label" for="fTitle">Hoofdkop <i class="label__opt">Heading 2 &middot; 41pt &middot; max 6 woorden</i></label>
+              <label class="label" for="fTitle">Hoofdkop <i class="label__opt">Heading 2 &middot; 42pt &middot; max 6 woorden</i></label>
               <textarea id="fTitle" rows="2" placeholder="Happy Workers Day" spellcheck="true"></textarea>
             </div>
             <div class="field">
-              <label class="label" for="fBody">Inleiding <i class="label__opt">16pt Demi &middot; max 2 zinnen</i></label>
+              <label class="label" for="fBody">Inleiding <i class="label__opt">14pt &middot; max 2 zinnen</i></label>
               <textarea id="fBody" rows="3" placeholder="To everyone who keeps the world moving: thank you. Today we celebrate you." spellcheck="true"></textarea>
             </div>
             <div class="field" data-only="d">
@@ -180,12 +201,36 @@
 
           <div class="grid2">
             <div class="field">
+              <span class="label">Tekstpositie</span>
+              <div class="seg seg--3 seg--sm" role="radiogroup" aria-label="Tekstpositie">
+                <input type="radio" name="textPos" id="tp-top" value="top" checked>
+                <label for="tp-top"><b>Boven</b></label>
+                <input type="radio" name="textPos" id="tp-middle" value="middle">
+                <label for="tp-middle"><b>Midden</b></label>
+                <input type="radio" name="textPos" id="tp-bottom" value="bottom">
+                <label for="tp-bottom"><b>Onder</b></label>
+              </div>
+            </div>
+            <div class="field">
+              <span class="label">Uitlijning</span>
+              <div class="seg seg--2 seg--sm" role="radiogroup" aria-label="Uitlijning">
+                <input type="radio" name="textAlign" id="ta-left" value="left" checked>
+                <label for="ta-left"><b>Links</b></label>
+                <input type="radio" name="textAlign" id="ta-center" value="center">
+                <label for="ta-center"><b>Gecentreerd</b></label>
+              </div>
+            </div>
+          </div>
+          <p class="hint">De referentieposts zetten het tekstblok linksboven tegen de marge van 108px. Midden + gecentreerd geeft de opmaak uit de merkhandleiding.</p>
+
+          <div class="grid2">
+            <div class="field">
               <span class="label">Kopgrootte <i class="label__opt">Template C</i></span>
               <div class="seg seg--2 seg--sm" role="radiogroup" aria-label="Kopgrootte">
                 <input type="radio" name="headSize" id="hs-h2" value="h2" checked>
-                <label for="hs-h2"><b>41pt</b></label>
+                <label for="hs-h2"><b>Normaal</b></label>
                 <input type="radio" name="headSize" id="hs-h1" value="h1">
-                <label for="hs-h1"><b>65pt</b></label>
+                <label for="hs-h1"><b>Groot</b></label>
               </div>
             </div>
             <div class="field">
@@ -203,6 +248,12 @@
             <input type="checkbox" id="autoFit" checked>
             <span class="switch__track"><span class="switch__dot"></span></span>
             <span class="switch__txt">Automatisch passend schalen binnen de safe-zone</span>
+          </label>
+
+          <label class="switch">
+            <input type="checkbox" id="accentLightblue" checked>
+            <span class="switch__track"><span class="switch__dot"></span></span>
+            <span class="switch__txt">Accentwoorden in lichtblauw (zoals in de voorbeeldposts)</span>
           </label>
         </div>
       </details>
@@ -237,25 +288,52 @@
         </div>
       </details>
 
-      <!-- ---------- 5. LOGO & KLEURVLAK ---------- -->
+      <!-- ---------- 5. LOGO & WATERMERK ---------- -->
       <details class="panel">
         <summary class="panel__head">
           <svg class="ico" aria-hidden="true"><use href="#i-logo"/></svg>
-          <span class="panel__title">Logo &amp; kleurvlak</span>
+          <span class="panel__title">Logo &amp; watermerk</span>
           <svg class="ico chev" aria-hidden="true"><use href="#i-chevron"/></svg>
         </summary>
         <div class="panel__body">
           <div class="field">
-            <span class="label">Logovariant <i class="label__opt">positie volgt het template</i></span>
-            <div class="seg seg--3 seg--sm" role="radiogroup" aria-label="Logovariant">
-              <input type="radio" name="logoVariant" id="lv-white" value="white" checked>
+            <span class="label">Logo <i class="label__opt">positie volgt het template</i></span>
+            <div class="seg seg--2 seg--sm" role="radiogroup" aria-label="Logovorm">
+              <input type="radio" name="logoType" id="lt-mark" value="mark" checked>
+              <label for="lt-mark"><b>Beeldmerk (S)</b></label>
+              <input type="radio" name="logoType" id="lt-full" value="full">
+              <label for="lt-full"><b>Volledig logo</b></label>
+            </div>
+            <p class="hint">A, C en D: rechtsonder op 108px, zoals op alle tien pagina&rsquo;s van het ontwerp. B: groot gecentreerd.</p>
+          </div>
+
+          <!-- Het logo is een inline SVG; de vulkleur wordt door app.js gezet.
+               Auto = wit, of de primaire kleur van de gekozen gradient. -->
+          <div class="field">
+            <span class="label">Logokleur</span>
+            <div class="seg seg--4 seg--sm" role="radiogroup" aria-label="Logokleur">
+              <input type="radio" name="logoVariant" id="lv-auto" value="auto" checked>
+              <label for="lv-auto"><span class="sw sw--auto"></span><b>Auto</b></label>
+              <input type="radio" name="logoVariant" id="lv-white" value="white">
               <label for="lv-white"><span class="sw" style="background:#fff"></span><b>Wit</b></label>
               <input type="radio" name="logoVariant" id="lv-blue-white" value="blue-white">
-              <label for="lv-blue-white"><span class="sw" style="background:linear-gradient(90deg,#305bad 50%,#fff 50%)"></span><b>Blauw / wit</b></label>
+              <label for="lv-blue-white"><span class="sw" style="background:#305bad"></span><b>Blauw</b></label>
               <input type="radio" name="logoVariant" id="lv-color" value="color">
-              <label for="lv-color"><span class="sw" style="background:linear-gradient(90deg,#305bad 50%,#221f5e 50%)"></span><b>Kleur</b></label>
+              <label for="lv-color"><span class="sw" style="background:#221f5e"></span><b>Navy</b></label>
             </div>
-            <p class="hint">A en C: rechtsonder. B: groot gecentreerd (80% breed). D: linksboven.</p>
+            <p class="hint">Auto volgt de gradient: lichtblauw of donkerblauw, anders wit (in Template D altijd wit, het logo staat daar in het dekkende deel). Volledig logo: Blauw = blauw/wit, Navy = blauw/navy (officiële varianten).</p>
+          </div>
+
+          <label class="switch">
+            <input type="checkbox" id="watermark">
+            <span class="switch__track"><span class="switch__dot"></span></span>
+            <span class="switch__txt">Groot watermerk aan/uit</span>
+          </label>
+
+          <div class="field" id="watermarkOpacityField" hidden>
+            <label class="label" for="watermarkOpacity">Watermerk sterkte <output id="watermarkOpacityVal">20%</output></label>
+            <input type="range" id="watermarkOpacity" min="5" max="60" step="1" value="20">
+            <p class="hint">Het beeldmerk 150% breed, gecentreerd en semi-transparant wit over de foto (voorbeeldpost 21). Het kleine logo wordt dan verborgen; in Template B blijft het grote logo staan.</p>
           </div>
 
           <div class="field" data-only="d">
@@ -270,11 +348,18 @@
             </div>
           </div>
 
-          <label class="switch" data-only="d">
-            <input type="checkbox" id="dataAccent">
-            <span class="switch__track"><span class="switch__dot"></span></span>
-            <span class="switch__txt">Data-element in accentkleur (oranje)</span>
-          </label>
+          <div class="field" data-only="d">
+            <span class="label">Kleur data-element <i class="label__opt">alleen Template D</i></span>
+            <div class="seg seg--3 seg--sm" role="radiogroup" aria-label="Kleur data-element">
+              <input type="radio" name="dataColor" id="dc-ice" value="ice" checked>
+              <label for="dc-ice"><span class="sw" style="background:#ccdbdb"></span><b>IJsblauw</b></label>
+              <input type="radio" name="dataColor" id="dc-ink" value="ink">
+              <label for="dc-ink"><b>Tekstkleur</b></label>
+              <input type="radio" name="dataColor" id="dc-orange" value="orange">
+              <label for="dc-orange"><span class="sw" style="background:#e65d2d"></span><b>Oranje</b></label>
+            </div>
+            <p class="hint">IJsblauw is de kleur uit het ontwerp: een zacht getal dat achter de tekst wegvalt.</p>
+          </div>
         </div>
       </details>
 
@@ -357,32 +442,45 @@
         <!-- ============================================================
              POST-CANVAS — wordt 1-op-1 geëxporteerd door html2canvas.
              Template via data-template="a|b|c|d"; modifiers als class:
-               ink-dark      navy tekst i.p.v. wit
-               head-xl       hoofdkop 65pt i.p.v. 41pt (Template C)
-               plate-navy /  solide merkkleurvlak achter de inhoud (Template D)
+               ink-dark            navy tekst i.p.v. wit
+               tpos-top/-middle/   verticale plaatsing van het tekstblok
+                 -bottom
+               talign-left/-center horizontale uitlijning van het tekstblok
+               accent-lightblue    accentwoorden in lichtblauw
+               gradient-lightblue  merkverloop 135° over de foto
+               gradient-blue
+               watermark-on        groot semi-transparant beeldmerk (--wm = opacity)
+               logo-mark/logo-full beeldmerk (S) of volledig logo
+               plate-navy /        solide merkkleurvlak achter de inhoud (Template D)
                plate-blue
-               data-accent   data-element in oranje (Template D)
-             Lagen (z-index): foto 0 → overlay 1 → tekst 2 → logo 3
+               data-ice / -orange  kleur van het data-element (Template D)
+             Lagen (z-index): foto 0 → overlay, gradient, watermerk 1 → tekst 2 → logo 3
              ============================================================ -->
         <div class="post-canvas" id="postCanvas" data-template="a">
           <div class="pc-image" id="pcImage"></div>
           <div class="pc-overlay" id="pcOverlay"></div>
+          <div class="pc-gradient" id="pcGradient"></div>
+
+          <!-- Groot watermerk: app.js plaatst hier het beeldmerk als inline SVG -->
+          <div class="pc-watermark" id="pcWatermark" aria-hidden="true"></div>
 
           <!-- Tekstcontainer: inset = safe-zone (60px); uitlijning per template -->
           <div class="pc-content" id="pcContent">
             <div class="pc-body" id="pcBody">
               <div class="pc-flow" id="pcFlow">
-                <div class="pc-data" id="pcData"></div>
                 <h3 class="ss-h3" id="pcKicker"></h3>
                 <h2 class="ss-h2" id="pcTitle"></h2>
                 <p class="ss-intro" id="pcIntro"></p>
+                <div class="pc-data" id="pcData"></div>
               </div>
             </div>
           </div>
 
-          <!-- Logo: A/C rechtsonder, B gecentreerd 80%, D linksboven (CSS) -->
+          <!-- Logo: A, C en D rechtsonder, B groot gecentreerd (CSS).
+               app.js vervangt de <img> door een inline SVG met dynamische
+               vulkleur; de <img> blijft als terugvaloptie (file://). -->
           <div class="pc-logo" id="pcLogoBox">
-            <img id="pcLogo" src="assets/brand/speedstar-logo-white.svg" alt="Speedstar Logistics">
+            <img id="pcLogo" src="assets/brand/speedstar-mark-white.svg" alt="Speedstar Logistics">
           </div>
 
           <!-- Empty state: alleen zichtbaar zonder foto -->
