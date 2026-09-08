@@ -1,14 +1,13 @@
 {
-  "name": "post-studio",
+  "name": "speedstar-post-maker",
   "version": "1.0.0",
-  "description": "Instagram Post Maker met AI-assistent (OpenAI) — frontend + kleine Node-backend voor Render",
+  "description": "Speedstar Post Maker: on-brand Instagram-posts (4:5) met AI-assistent (OpenAI) — frontend + kleine Node-backend voor Render",
   "private": true,
   "main": "server/server.js",
   "scripts": {
     "start": "node server/server.js",
-    "dev": "node server/server.js",
-    "fonts": "node scripts/build-font-index.js",
-    "build": "node scripts/build-font-index.js"
+    "dev": "node -e \"process.env.AI_MOCK='1';require('./server/server.js')\"",
+    "fonts": "echo Geen fontindex meer nodig: Allumi Std staat vast in css/styles.css"
   },
   "engines": {
     "node": ">=18.17"

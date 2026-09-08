@@ -1,12 +1,12 @@
-# Render Blueprint — maakt in één keer een Web Service voor Post Studio.
-# Dashboard -> New -> Blueprint -> kies deze repo. Vul daarna de twee
-# "sync: false"-variabelen in onder Environment.
+# Render Blueprint — Web Service voor de Speedstar Post Maker.
+# Dashboard -> New -> Blueprint -> kies deze repo. Vul daarna OPENAI_API_KEY
+# in onder Environment (sync: false = nooit in git).
 services:
   - type: web
-    name: post-studio
+    name: speedstar-post-maker
     runtime: node
     plan: free
-    buildCommand: npm install --omit=dev && npm run fonts
+    buildCommand: npm install --omit=dev
     startCommand: npm start
     healthCheckPath: /api/health
     envVars:
@@ -14,8 +14,6 @@ services:
         value: "20"
       - key: OPENAI_API_KEY
         sync: false          # plak je key in het Render-dashboard, nooit in git
-      - key: ACCESS_CODE
-        sync: false          # optioneel: gedeelde code die de tool meestuurt
       - key: AI_MODEL
         value: gpt-4.1
       - key: RATE_LIMIT

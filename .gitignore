@@ -8,8 +8,10 @@ npm-debug.log*
 *.env
 !.env.example
 
-# Fontbibliotheek: alleen formaten die browsers via @font-face laden
-assets/fonts/*.fon
-assets/fonts/*.FON
-assets/fonts/*.ttc
-assets/fonts/*.TTC
+# Ruwe merkbronnen: staan lokaal, de tool gebruikt assets/brand, assets/fonts
+# en assets/STYLEGUIDE_Speedstar.md
+assets/Allumi std/
+assets/Logo Speedstar PNG/
+assets/Logo Speedstar SVG/
+assets/Merkvormen Speedstar/
+assets/*.pdf

@@ -1,30 +1,25 @@
 /* =============================================================================
-   server.js — Post Studio backend
+   server.js — Speedstar Post Maker backend
    -----------------------------------------------------------------------------
    Eén kleine Node-server (geen framework) die twee dingen doet:
 
-     1. De tool zelf serveren (index.html, css/, js/) zodat frontend en API op
-        dezelfde origin draaien — geen CORS-gedoe, geen file://-beperkingen.
-     2. POST /api/suggest: de AI-assistent. Ontvangt de briefing, de huidige
-        tekst, de stijlgids en de instellingen, en laat het OpenAI-model een
-        of meer complete postvarianten schrijven die passen bij het merk.
+     1. De tool zelf serveren (index.html, css/, js/, assets/) zodat frontend
+        en API op dezelfde origin draaien.
+     2. POST /api/suggest: de AI-assistent. Ontvangt de briefing en de huidige
+        post, en laat het OpenAI-model on-brand Speedstar-copy schrijven in
+        exact de JSON-structuur uit assets/STYLEGUIDE_Speedstar.md (§4).
 
    De API-key staat ALLEEN hier, in de omgevingsvariabele OPENAI_API_KEY.
-   De browser krijgt hem nooit te zien. Geen dependencies: Node's ingebouwde
-   fetch praat rechtstreeks met https://api.openai.com.
+   Geen dependencies: Node's ingebouwde fetch praat met api.openai.com.
 
    Omgevingsvariabelen:
      OPENAI_API_KEY      verplicht — je OpenAI-key (sk-...)
-     ACCESS_CODE         optioneel — gedeelde code die de tool moet meesturen,
-                         zodat niet iedereen die je URL kent jouw key opstookt
-     AI_MODEL            standaard gpt-4.1 (elk chat-model met structured
-                         outputs werkt, bijv. gpt-4o, gpt-4.1-mini)
-     AI_REASONING        alleen voor redeneermodellen (o-serie, gpt-5):
-                         low | medium | high
-     ALLOWED_ORIGINS     komma-lijst van extra origins die de API mogen
-                         aanroepen (bijv. http://127.0.0.1:5500 voor Live Server)
+     AI_MODEL            standaard gpt-4.1 (elk chat-model met structured outputs)
+     AI_REASONING        alleen voor redeneermodellen (o-serie, gpt-5): low | medium | high
+     ALLOWED_ORIGINS     komma-lijst van extra origins die de API mogen aanroepen
+                         (GitHub Pages en localhost zijn standaard toegestaan)
      RATE_LIMIT          verzoeken per IP per 10 minuten (standaard 30)
-     AI_MOCK=1           geen API-aanroep; geeft een vaste testvariant terug
+     AI_MOCK=1           geen API-aanroep; geeft vaste testvoorstellen terug
      PORT                door Render gezet
    ============================================================================= */
 'use strict';
@@ -38,82 +33,80 @@ const MODEL = process.env.AI_MODEL || 'gpt-4.1';
 const REASONING = ['low', 'medium', 'high'].includes(process.env.AI_REASONING) ? process.env.AI_REASONING : null;
 const OPENAI_URL = (process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1').replace(/\/+$/, '') + '/chat/completions';
 const AI_TIMEOUT_MS = 110000;
-const ACCESS_CODE = (process.env.ACCESS_CODE || '').trim();
-// Origins die de API altijd mogen aanroepen: de GitHub Pages-versie van deze
-// tool. Extra origins (bijv. Live Server) via ALLOWED_ORIGINS.
 const DEFAULT_ALLOWED_ORIGINS = ['https://jelger1.github.io'];
 const ALLOWED_ORIGINS = DEFAULT_ALLOWED_ORIGINS.concat((process.env.ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean));
+const LOCAL_ORIGIN = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;   // lokaal testen mag altijd
 const RATE_LIMIT = parseInt(process.env.RATE_LIMIT, 10) || 30;
 const MOCK = process.env.AI_MOCK === '1';
-const MAX_BODY = 400 * 1024;          // 400 KB: briefing + stijlgids + tekst
-const MAX_STYLEGUIDE_CHARS = 60000;   // ~15k tokens; ruim voor een stijlgids
+const MAX_BODY = 64 * 1024;
 
 const API_KEY = (process.env.OPENAI_API_KEY || '').trim();
 
 /* ---------------------------------------------------------------------------
-   Uitvoerschema — het model vult dit exact in (OpenAI structured outputs,
-   strict: elke eigenschap verplicht, geen extra velden)
+   Uitvoerschema — styleguide §4, afgedwongen met OpenAI structured outputs
+   (strict: elke eigenschap verplicht, geen extra velden, enum voor het
+   template). Het model KAN geen andere structuur teruggeven.
+
+   Per voorstel exact de structuur uit de styleguide:
+     bovenkop, hoofdkop, body, accentWoorden, aanbevolenTemplate
+   plus drie hulpvelden voor de tool:
+     dataElement (alleen Template D), invalshoek (naam van de variant),
+     toelichting (één zin voor de gebruiker)
    ------------------------------------------------------------------------- */
-const THEMES = ['minimal', 'editorial', 'panel', 'bold', 'band', 'quote'];
+const TEMPLATES = ['A', 'B', 'C', 'D'];
 
 function obj(properties) {
   return { type: 'object', properties, required: Object.keys(properties), additionalProperties: false };
 }
 
+const POST_SCHEMA = obj({
+  bovenkop: { type: 'string', description: 'Korte introductie boven de hoofdkop (Heading 3, 26pt): max 4 woorden, bijv. een datum, thema of aanleiding. Leeg als het template geen bovenkop nodig heeft.' },
+  hoofdkop: { type: 'string', description: 'De kernboodschap (Heading 2, 41pt): max 6 woorden, geen punt aan het eind. Bij Template B leeg.' },
+  body: { type: 'string', description: 'De uitleg of wens (Inleiding, 16pt): max 2 zinnen, kort en bondig. Bij Template B leeg.' },
+  accentWoorden: { type: 'array', items: { type: 'string' }, description: '1 tot 3 woorden of korte zinsdelen die LETTERLIJK in hoofdkop of body voorkomen en Bold Italic worden. Leeg toegestaan.' },
+  aanbevolenTemplate: { type: 'string', enum: TEMPLATES, description: 'A = Event & Wishes, B = Brand Awareness (alleen beeld + logo), C = Krachtig statement, D = Data & Infographic' },
+  dataElement: { type: 'string', description: 'Alleen bij Template D: het getal of feit dat groot in beeld komt, max 6 tekens, bijv. "98%" of "24/7". Anders leeg.' },
+  invalshoek: { type: 'string', description: 'Naam van deze variant in het Nederlands, max 3 woorden, bijv. "Warm & persoonlijk"' },
+  toelichting: { type: 'string', description: 'Eén zin in het Nederlands: waarom deze variant en dit template passen bij de briefing.' }
+});
+
 const RESPONSE_SCHEMA = obj({
-  variants: {
-    type: 'array', description: '1 tot 3 varianten',
-    items: obj({
-      name:  { type: 'string', description: 'Korte naam van de invalshoek, max 4 woorden, bijv. "Urgentie" of "Warm & persoonlijk"' },
-      label: { type: 'string', description: 'Eyebrow-label bovenaan de post, 1-3 woorden, of leeg' },
-      title: { type: 'string', description: 'De kop. Max ~7 woorden per regel; een \\n scheidt regels. Krachtig, geen punt aan het eind' },
-      body:  { type: 'string', description: 'Bodytekst, 0-2 korte zinnen (max ~140 tekens). **woord** geeft nadruk in de accentkleur. Leeg als niet nodig' },
-      list:  { type: 'array', items: { type: 'string' }, description: '0-3 korte opsommingspunten, elk max ~6 woorden' },
-      quote: { type: 'string', description: 'Optioneel citaat of afsluitende regel, of leeg' },
-      badge: { type: 'string', description: 'Handle/bijschrift onderin, bijv. @merknaam, of leeg om de huidige te behouden' },
-      style: obj({
-        theme:     { type: 'string', enum: THEMES },
-        align:     { type: 'string', enum: ['left', 'center', 'right'] },
-        position:  { type: 'string', enum: ['top', 'middle', 'bottom'] },
-        overlay:   { type: 'integer', description: 'Donkerte van de foto in %, 0-90; 35-65 is gebruikelijk' },
-        textScale: { type: 'integer', description: 'Tekstgrootte in %, 70-145; 100 is normaal' },
-        accent:    { type: 'string', description: 'Accentkleur als #rrggbb uit het merkpalet, of leeg om de huidige te behouden' },
-        textColor: { type: 'string', description: 'Tekstkleur als #rrggbb, of leeg om de huidige te behouden' }
-      }),
-      why: { type: 'string', description: 'Eén zin, in de taal van de gebruiker: waarom deze variant past bij briefing en merk' }
-    })
-  },
-  notes: { type: 'string', description: 'Optionele korte opmerking voor de gebruiker (bijv. ontbrekende info in de briefing), of leeg' }
+  variants: { type: 'array', description: 'De voorstellen: 3 bij maken, 1 bij verbeteren', items: POST_SCHEMA },
+  notes: { type: 'string', description: 'Optionele korte opmerking voor de gebruiker in het Nederlands (bijv. ontbrekende informatie in de briefing), of leeg' }
 });
 
 /* ---------------------------------------------------------------------------
-   Systeemprompt — stabiel, zodat prompt caching hem kan hergebruiken
+   Systeemprompt — merkpersoonlijkheid, tone of voice en templateregels uit
+   assets/STYLEGUIDE_Speedstar.md (§3 en §4). Stabiel, zodat OpenAI's prompt
+   caching hem bij elke aanroep kan hergebruiken.
    ------------------------------------------------------------------------- */
-const SYSTEM_PROMPT = `Je bent een senior social-media copywriter en art director. Je schrijft Instagram-posts voor een tool genaamd Post Studio: één foto met daarop tekst in vaste onderdelen (label, kop, tekst, opsomming, citaat, handle) en een vormgevingssjabloon.
+const SYSTEM_PROMPT = `You are the in-house copywriter and art director of Speedstar Logistics. You write Instagram posts (4:5, one photo with text on it) that are 100% on-brand. You answer ONLY with the requested JSON object.
 
-## Wat je krijgt
-- Een briefing van de gebruiker: wat er gepost moet worden (actie, korting, aankondiging, aftellen, sfeer, ...). Dit is de opdracht.
-- Eventueel de huidige tekst in de tool (bij "verbeteren" is dit je uitgangspunt).
-- Eventueel een merkstijlgids in markdown, plus de kleuren/fonts die daaruit zijn gehaald.
-- De huidige instellingen (formaat, sjabloon, kleuren, handle).
+## Brand personality — Navigate, Dynamic, Stable
+- Speedstar Logistics is dynamic and always in motion, but with a strong, stable base: the North Star in the logo. It navigates: it knows the way and guides cargo and customers safely to their destination.
+- Tone of voice: professional, reliable, decisive. Confident, never boastful. Warm towards people (drivers, planners, customers), precise about facts.
+- Language: ENGLISH, always, even when the briefing is in Dutch. Short sentences, active voice, concrete words.
+- Use nautical or logistics metaphors where they fit naturally: "sail further", "deliver trust", "steady course", "on the move", "keep the world moving". Never force one in and never more than one per post.
+- No hashtags, no emoji, no exclamation marks in headlines, no clichés ("we go the extra mile"), no invented facts: use only figures, dates, names and promises from the briefing. If something essential is missing, write around it and mention it in "notes" (in Dutch).
 
-## Zo denk je
-1. Lees de stijlgids als een merkstrateeg: wie is het merk, wie is de doelgroep, wat is de tone of voice (formeel/informeel, je/u, speels/zakelijk), welke woorden en USP's gebruikt het merk, wat vermijdt het? Neem die stem exact over. Zonder stijlgids: kies een stem die past bij de briefing en blijf neutraal-professioneel.
-2. Begrijp wat de gebruiker écht wil bereiken (verkopen, informeren, aftellen, warmte overbrengen) en schrijf daarvoor. Een korting vraagt om helderheid en urgentie; een aftelling om spanning en een concrete datum; een sfeerpost om beeldend taalgebruik.
-3. Gebruik uitsluitend feiten uit de briefing en de stijlgids. Verzin nooit percentages, prijzen, data, voorwaarden of productnamen. Ontbreekt iets essentieels, schrijf dan eromheen en meld het in "notes".
-4. Instagram wordt op een telefoon gelezen: weinig woorden, veel kracht. Kop max ~7 woorden per regel (gebruik \\n voor een bewuste tweede regel), body max ~140 tekens, opsomming max 3 punten van max ~6 woorden. Liever minder onderdelen dan een volle post. Geen hashtags, geen emoji tenzij het merk dat duidelijk doet.
-5. Kies het sjabloon bewust:
-   - minimal: rustig, sfeer, tekst direct op de foto
-   - editorial: verzorgd, redactioneel, accentlijn langs de tekst
-   - panel: veel tekst of drukke foto, tekst op een licht vlak
-   - bold: aanbiedingen en kortingen, kop in een vol accentvlak
-   - band: donkere balk van rand tot rand, zakelijk en leesbaar
-   - quote: één uitspraak centraal, gecentreerd
-   Kies uitlijning en positie zodat de tekst logisch op een foto valt (onder is veilig). Verhoog overlay bij veel tekst op een foto.
-6. Kleuren: gebruik alleen hexwaarden uit het meegegeven merkpalet. Geen palet? Laat accent en textColor leeg zodat de huidige instelling blijft staan.
-7. Schrijf in de taal van de briefing (meestal Nederlands). Bij "verbeteren": behoud de boodschap en de feiten, maak het scherper en meer on-brand, lever precies 1 variant. Bij "genereren": lever 3 duidelijk verschillende invalshoeken (bijv. urgentie / voordeel / gevoel).
+## The post structure (typographic hierarchy)
+- bovenkop: the eyebrow above the headline. Max 4 words. A date, occasion, theme or short lead-in ("1 May 2026", "Workers Day", "Did you know?"). May be empty.
+- hoofdkop: the main message. Max 6 words, no full stop at the end. This is what people read first.
+- body: the explanation or the wish. Max 2 short sentences. May be empty when the headline says it all.
+- accentWoorden: 1-3 words or short phrases that must appear LITERALLY (same spelling) in hoofdkop or body. They are set in bold italic to make them stand out. Choose the words that carry the message ("trust", "keeps the world moving"). Empty list allowed.
+- dataElement: only for Template D — the number or fact shown large ("98%", "24/7", "12 countries"). Otherwise empty.
 
-Lever uitsluitend het gevraagde JSON-object, zonder tekst eromheen.`;
+## Templates — recommend the one that fits the message
+- A "Event & Wishes": holidays, wishes, special days, anniversaries, thank-you posts. Photo with text left-aligned: bovenkop (date/occasion) → hoofdkop → body. Default choice for greetings.
+- B "Brand Awareness": pure visual impact — photo plus a large centred logo, NO text. Recommend only when the briefing is about mood, imagery or the brand itself with nothing to say; then leave bovenkop, hoofdkop and body empty.
+- C "Statement": core values and strong one-liners ("Powered by hardworking people who deliver trust"). Centred, heavy navy overlay, white text. hoofdkop carries the statement (max 6 words, or up to ~10 if it is the whole post); body optional; accent words matter most here.
+- D "Data & Infographic": facts, percentages, milestones. dataElement carries the number, bovenkop names what it measures ("On-time deliveries"), hoofdkop gives the takeaway, body one sentence of context. Only when the briefing contains a real number.
+
+## Modes
+- generate: deliver exactly 3 clearly different angles (for example: warm & personal / proud & factual / short & strong), each with its own aanbevolenTemplate when that makes sense. invalshoek names the angle in Dutch.
+- improve: keep the message and the facts of the current post, make it sharper and more on-brand, keep the current template unless it clearly does not fit. Deliver exactly 1 variant.
+
+Return only the JSON object that matches the schema. No markdown, no commentary.`;
 
 /* ---------------------------------------------------------------------------
    Hulpfuncties
@@ -122,7 +115,7 @@ const MIME = {
   '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
   '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
   '.webp': 'image/webp', '.ico': 'image/x-icon', '.md': 'text/markdown; charset=utf-8', '.txt': 'text/plain; charset=utf-8',
-  '.otf': 'font/otf', '.ttf': 'font/ttf', '.woff': 'font/woff', '.woff2': 'font/woff2'
+  '.otf': 'font/otf', '.ttf': 'font/ttf', '.woff': 'font/woff', '.woff2': 'font/woff2', '.pdf': 'application/pdf'
 };
 
 function json(res, status, body, extraHeaders) {
@@ -136,11 +129,11 @@ function corsHeaders(req) {
   if (!origin) return {};
   const host = req.headers.host;
   const sameOrigin = origin === `http://${host}` || origin === `https://${host}`;
-  if (sameOrigin || ALLOWED_ORIGINS.includes('*') || ALLOWED_ORIGINS.includes(origin)) {
+  if (sameOrigin || LOCAL_ORIGIN.test(origin) || ALLOWED_ORIGINS.includes('*') || ALLOWED_ORIGINS.includes(origin)) {
     return {
       'Access-Control-Allow-Origin': origin,
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, X-Access-Code',
+      'Access-Control-Allow-Headers': 'Content-Type',
       'Access-Control-Max-Age': '600',
       'Vary': 'Origin'
     };
@@ -173,7 +166,7 @@ function rateLimited(ip) {
   const list = (hits.get(ip) || []).filter(t => now - t < window);
   list.push(now);
   hits.set(ip, list);
-  if (hits.size > 5000) hits.clear();   // geheugen begrensd houden
+  if (hits.size > 5000) hits.clear();
   return list.length > RATE_LIMIT;
 }
 
@@ -182,86 +175,129 @@ function clientIp(req) {
   return (typeof fwd === 'string' && fwd.split(',')[0].trim()) || req.socket.remoteAddress || 'onbekend';
 }
 
-function str(v, max) { return typeof v === 'string' ? v.slice(0, max || 4000) : ''; }
+function str(v, max) { return typeof v === 'string' ? v.slice(0, max || 2000).trim() : ''; }
+function words(s) { return String(s || '').trim().split(/\s+/).filter(Boolean); }
+function normTemplate(v) {
+  const m = String(v || '').toUpperCase().match(/\b([ABCD])\b/);
+  return m ? m[1] : '';
+}
+/* Komt een accentwoord/-zinsdeel als heel woord in de tekst voor? Dezelfde
+   Unicode-woordgrens als js/typography.js gebruikt, zodat server en canvas
+   hetzelfde markeren. */
+function occursIn(haystack, phrase) {
+  const esc = phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
+  return new RegExp('(^|[^\\p{L}\\p{N}_])' + esc + '(?![\\p{L}\\p{N}_])', 'iu').test(haystack);
+}
 
 /* ---------------------------------------------------------------------------
    De AI-aanroep
    ------------------------------------------------------------------------- */
+
+/* Het variabele deel van de prompt: opdracht, briefing, huidige post en context.
+   Frontend stuurt: { mode, brief, post: { bovenkop, hoofdkop, body,
+   accentWoorden, data, template }, settings: { hasImage } } */
 function buildUserMessage(p) {
   const mode = p.mode === 'improve' ? 'improve' : 'generate';
-  const content = p.content || {};
+  const post = p.post || {};
   const settings = p.settings || {};
-  const brand = (p.styleguide && p.styleguide.brand) || {};
-  const palette = Array.isArray(brand.colors) ? brand.colors.slice(0, 24) : [];
+  const accents = Array.isArray(post.accentWoorden) ? post.accentWoorden.map(w => str(w, 60)).filter(Boolean).slice(0, 6) : [];
+  const template = normTemplate(post.template);
 
   const lines = [];
   lines.push(mode === 'improve'
-    ? '## Opdracht: VERBETER de huidige tekst (1 variant). Behoud boodschap en feiten; maak het scherper en on-brand.'
-    : '## Opdracht: MAAK een nieuwe post (3 verschillende varianten) op basis van de briefing.');
+    ? '## Mode: IMPROVE — rewrite the current post (exactly 1 variant). Keep the message and the facts; make it sharper and more on-brand.'
+    : '## Mode: GENERATE — write a new post (exactly 3 clearly different variants) based on the briefing.');
 
-  lines.push('', '## Briefing van de gebruiker', str(p.brief, 3000).trim() || '(geen briefing — leid het doel af uit de huidige tekst)');
+  lines.push('', '## Briefing (may be in Dutch; the post itself must be in English)');
+  lines.push(str(p.brief, 3000) || '(no briefing — derive the goal from the current post)');
 
-  const hasContent = ['label', 'title', 'body', 'list', 'quote'].some(k => str(content[k], 2000).trim());
-  if (hasContent) {
-    lines.push('', '## Huidige tekst in de tool');
-    if (str(content.label).trim()) lines.push('Label: ' + str(content.label, 200));
-    if (str(content.title).trim()) lines.push('Kop: ' + str(content.title, 400).replace(/\n/g, ' / '));
-    if (str(content.body).trim()) lines.push('Tekst: ' + str(content.body, 1200));
-    if (str(content.list).trim()) lines.push('Opsomming: ' + str(content.list, 600).split('\n').filter(Boolean).join(' | '));
-    if (str(content.quote).trim()) lines.push('Citaat: ' + str(content.quote, 400));
+  const hasPost = ['bovenkop', 'hoofdkop', 'body', 'data'].some(k => str(post[k], 1000));
+  if (hasPost) {
+    lines.push('', '## Current post in the tool');
+    if (str(post.bovenkop)) lines.push('bovenkop: ' + str(post.bovenkop, 200));
+    if (str(post.hoofdkop)) lines.push('hoofdkop: ' + str(post.hoofdkop, 400).replace(/\n/g, ' / '));
+    if (str(post.body)) lines.push('body: ' + str(post.body, 1000));
+    if (str(post.data)) lines.push('dataElement: ' + str(post.data, 20));
+    if (accents.length) lines.push('accentWoorden: ' + accents.join(', '));
   }
 
-  lines.push('', '## Huidige instellingen');
-  lines.push(`Formaat: ${str(settings.ratio, 10) || '4:5'} · Sjabloon: ${str(settings.theme, 20) || 'editorial'} · Uitlijning: ${str(settings.align, 10) || 'left'} · Positie: ${str(settings.valign, 10) || 'bottom'}`);
-  lines.push(`Accentkleur: ${str(settings.accent, 10) || '-'} · Tekstkleur: ${str(settings.textColor, 10) || '-'} · Handle: ${str(settings.badge, 50) || '-'}`);
-  lines.push(`Er is ${settings.hasImage ? 'wel' : 'nog geen'} foto geplaatst.`);
-
-  if (palette.length || brand.name || brand.handle || (brand.fonts && (brand.fonts.heading || brand.fonts.body))) {
-    lines.push('', '## Uit de stijlgids gehaald');
-    if (brand.name) lines.push('Merknaam: ' + str(brand.name, 80));
-    if (brand.handle) lines.push('Handle: ' + str(brand.handle, 60));
-    if (brand.fonts && (brand.fonts.heading || brand.fonts.body)) lines.push(`Fonts: kop ${str(brand.fonts.heading, 60) || '-'} / tekst ${str(brand.fonts.body, 60) || '-'}`);
-    if (palette.length) lines.push('Merkpalet (gebruik alleen deze hexwaarden): ' + palette.map(c => `${str(c.hex, 9)}${c.role ? ' (' + str(c.role, 12) + ')' : ''}${c.name ? ' ' + str(c.name, 30) : ''}`).join(', '));
-  }
+  lines.push('', '## Context');
+  lines.push('Current template: ' + (template || 'A') + (settings.hasImage ? ' · a photo is in place' : ' · no photo yet'));
+  if (mode === 'improve' && template) lines.push('Keep aanbevolenTemplate = ' + template + ' unless it clearly does not fit the message.');
 
   return lines.join('\n');
 }
 
+/* Antwoord van het model normaliseren en binnen de merkregels houden. Het
+   strict schema garandeert de structuur; dit bewaakt de inhoud (lengtes,
+   accentwoorden die echt in de tekst staan, template-afhankelijke velden). */
+function sanitizeVariant(v) {
+  const template = normTemplate(v.aanbevolenTemplate) || 'A';
+  let bovenkop = str(v.bovenkop, 120);
+  let hoofdkop = str(v.hoofdkop, 240).replace(/[.!]+$/, '');
+  let body = str(v.body, 400);
+  let dataElement = template === 'D' ? str(v.dataElement, 12) : '';
+
+  if (template === 'B') { bovenkop = ''; hoofdkop = ''; body = ''; }
+  if (words(bovenkop).length > 6) bovenkop = words(bovenkop).slice(0, 6).join(' ');
+
+  // Accentwoorden: alleen hele woorden die letterlijk in de tekst staan, max 3, geen dubbelen
+  const haystack = hoofdkop + '\n' + body + '\n' + bovenkop;
+  const seen = new Set();
+  const accentWoorden = (Array.isArray(v.accentWoorden) ? v.accentWoorden : [])
+    .map(w => str(w, 60).replace(/^[*_"'“”]+|[*_"'“”.,!?]+$/g, ''))
+    .filter(w => w && occursIn(haystack, w) && !seen.has(w.toLowerCase()) && seen.add(w.toLowerCase()))
+    .slice(0, 3);
+
+  return {
+    bovenkop, hoofdkop, body, accentWoorden,
+    aanbevolenTemplate: template,
+    dataElement,
+    invalshoek: str(v.invalshoek, 60),
+    toelichting: str(v.toelichting, 300)
+  };
+}
+
+const MOCK_RESPONSE = {
+  variants: [
+    { bovenkop: '1 May 2026', hoofdkop: 'Happy Workers Day', body: 'To everyone who keeps the world moving: thank you. Today we celebrate you.',
+      accentWoorden: ['keeps the world moving'], aanbevolenTemplate: 'A', dataElement: '', invalshoek: 'Warm & persoonlijk',
+      toelichting: 'Testmodus (AI_MOCK=1): een wens past bij Template A.' },
+    { bovenkop: '', hoofdkop: 'Powered by hardworking people', body: 'Every delivery starts with someone who cares. We deliver trust, every single day.',
+      accentWoorden: ['hardworking', 'deliver trust'], aanbevolenTemplate: 'C', dataElement: '', invalshoek: 'Trots & krachtig',
+      toelichting: 'Testmodus: een statement over de mensen past bij Template C.' },
+    { bovenkop: 'On-time deliveries', hoofdkop: 'Reliability you can plan on', body: 'Across our network, cargo arrives when we say it will.',
+      accentWoorden: ['plan on'], aanbevolenTemplate: 'D', dataElement: '98%', invalshoek: 'Feit & cijfer',
+      toelichting: 'Testmodus: een percentage vraagt om Template D.' }
+  ],
+  notes: 'Testmodus: geen echte AI-aanroep (AI_MOCK=1).'
+};
+
 async function suggest(p) {
-  const styleguideText = str(p.styleguide && p.styleguide.text, MAX_STYLEGUIDE_CHARS);
-  const truncated = (p.styleguide && typeof p.styleguide.text === 'string' && p.styleguide.text.length > MAX_STYLEGUIDE_CHARS);
+  const mode = p.mode === 'improve' ? 'improve' : 'generate';
 
   if (MOCK) {
-    return {
-      variants: [{
-        name: 'Testvariant', label: 'Alleen deze week', title: '40% korting op\nalle plaids',
-        body: 'Warm de winter in met **40% korting**. Geldig tot en met zondag.',
-        list: ['Gratis verzending', 'Voor 22:00 besteld, vandaag verzonden'], quote: '', badge: '',
-        style: { theme: 'bold', align: 'left', position: 'bottom', overlay: 55, textScale: 100, accent: '', textColor: '' },
-        why: 'Testmodus: geen echte AI-aanroep (AI_MOCK=1).'
-      }],
-      notes: truncated ? 'De stijlgids is ingekort tot de eerste 60.000 tekens.' : ''
-    };
+    const variants = mode === 'improve' ? [MOCK_RESPONSE.variants[0]] : MOCK_RESPONSE.variants;
+    return { variants: variants.map(sanitizeVariant), notes: MOCK_RESPONSE.notes };
   }
 
   if (!API_KEY) {
     throw Object.assign(new Error('De server heeft geen OPENAI_API_KEY. Zet die als omgevingsvariabele (op Render: Environment → Add Environment Variable).'), { status: 503 });
   }
 
-  // Vaste blokken eerst (systeemprompt, stijlgids), variabele input als laatste:
-  // zo kan OpenAI's automatische prompt caching het begin hergebruiken.
-  const messages = [{ role: 'system', content: SYSTEM_PROMPT }];
-  if (styleguideText.trim()) {
-    messages.push({ role: 'system', content: '## Merkstijlgids (markdown, door de gebruiker geüpload)\n\n' + styleguideText });
-  }
-  messages.push({ role: 'user', content: buildUserMessage(p) });
-
+  // Vaste systeemprompt eerst (prompt caching), variabele input als laatste
   const body = {
     model: MODEL,
-    messages,
-    response_format: { type: 'json_schema', json_schema: { name: 'post_suggestions', strict: true, schema: RESPONSE_SCHEMA } }
+    messages: [
+      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'user', content: buildUserMessage(p) }
+    ],
+    response_format: { type: 'json_schema', json_schema: { name: 'speedstar_post', strict: true, schema: RESPONSE_SCHEMA } }
   };
+  // Redeneermodellen (o-serie, gpt-5) kennen geen temperature; de rest iets
+  // rustiger dan standaard zodat de copy consistent on-brand blijft.
   if (REASONING) body.reasoning_effort = REASONING;
+  else if (!/^(o\d|gpt-5)/i.test(MODEL)) body.temperature = 0.7;
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), AI_TIMEOUT_MS);
@@ -301,24 +337,21 @@ async function suggest(p) {
     throw Object.assign(new Error('Het model gaf geen voorstellen terug. Probeer het opnieuw.'), { status: 502 });
   }
 
-  // Getallen binnen de grenzen houden (strict schema kent geen min/max)
-  out.variants = out.variants.slice(0, 3);
-  out.variants.forEach(v => {
-    v.style = v.style || {};
-    v.style.overlay = Math.min(90, Math.max(0, Math.round(Number(v.style.overlay) || 45)));
-    v.style.textScale = Math.min(145, Math.max(70, Math.round(Number(v.style.textScale) || 100)));
-    v.list = Array.isArray(v.list) ? v.list.slice(0, 3) : [];
-  });
+  const variants = out.variants.slice(0, mode === 'improve' ? 1 : 3).map(sanitizeVariant)
+    .filter(v => v.aanbevolenTemplate === 'B' || v.hoofdkop || v.body);
+  if (!variants.length) throw Object.assign(new Error('Het model gaf lege voorstellen terug. Probeer het opnieuw.'), { status: 502 });
 
-  if (truncated) out.notes = [out.notes, 'De stijlgids is ingekort tot de eerste 60.000 tekens.'].filter(Boolean).join(' ');
   const u = data.usage || {};
-  out.usage = {
-    input: u.prompt_tokens || 0,
-    cached: (u.prompt_tokens_details && u.prompt_tokens_details.cached_tokens) || 0,
-    output: u.completion_tokens || 0,
-    model: data.model || MODEL
+  return {
+    variants,
+    notes: str(out.notes, 300),
+    usage: {
+      input: u.prompt_tokens || 0,
+      cached: (u.prompt_tokens_details && u.prompt_tokens_details.cached_tokens) || 0,
+      output: u.completion_tokens || 0,
+      model: data.model || MODEL
+    }
   };
-  return out;
 }
 
 /* Foutmeldingen van OpenAI vertalen naar iets waar de gebruiker wat mee kan */
@@ -334,7 +367,6 @@ function describeOpenAiError(status, data) {
   return 'De AI-aanroep werd afgewezen: ' + (msg || ('HTTP ' + status));
 }
 
-/* Alles wat nog geen nette status heeft, wordt een 500 */
 function describeError(err) {
   if (err && typeof err.status === 'number' && err.message) return { status: err.status, message: err.message };
   return { status: 500, message: 'Onverwachte serverfout: ' + (err && err.message ? err.message : String(err)) };
@@ -359,7 +391,7 @@ function serveStatic(req, res) {
     res.writeHead(200, {
       'Content-Type': MIME[ext] || 'application/octet-stream',
       'Content-Length': stat.size,
-      'Cache-Control': (ext === '.html' || filePath.endsWith('index.json')) ? 'no-cache'
+      'Cache-Control': ext === '.html' ? 'no-cache'
                      : /^\.(otf|ttf|woff2?)$/.test(ext) ? 'public, max-age=604800, immutable'
                      : 'public, max-age=3600'
     });
@@ -379,15 +411,11 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'OPTIONS') { res.writeHead(204, cors); res.end(); return; }
 
     if (url === '/api/health' && req.method === 'GET') {
-      json(res, 200, { ok: true, model: MODEL, hasKey: !!API_KEY || MOCK, needsCode: !!ACCESS_CODE, mock: MOCK }, cors);
+      json(res, 200, { ok: true, brand: 'Speedstar Logistics', model: MODEL, hasKey: !!API_KEY || MOCK, mock: MOCK }, cors);
       return;
     }
 
     if (url === '/api/suggest' && req.method === 'POST') {
-      if (ACCESS_CODE && (req.headers['x-access-code'] || '') !== ACCESS_CODE) {
-        json(res, 401, { error: 'Toegangscode ontbreekt of klopt niet. Vul hem in bij AI-instellingen.' }, cors);
-        return;
-      }
       if (rateLimited(clientIp(req))) {
         json(res, 429, { error: 'Te veel verzoeken. Wacht een paar minuten en probeer het opnieuw.' }, cors);
         return;
@@ -413,6 +441,6 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`Post Studio draait op http://localhost:${PORT}`);
-  console.log(`  model: ${MODEL}${REASONING ? ' · reasoning: ' + REASONING : ''} · OPENAI_API_KEY: ${API_KEY ? 'aanwezig' : 'ONTBREEKT'} · toegangscode: ${ACCESS_CODE ? 'aan' : 'uit'}${MOCK ? ' · MOCK-modus' : ''}`);
+  console.log(`Speedstar Post Maker draait op http://localhost:${PORT}`);
+  console.log(`  model: ${MODEL}${REASONING ? ' · reasoning: ' + REASONING : ''} · OPENAI_API_KEY: ${API_KEY ? 'aanwezig' : 'ONTBREEKT'}${MOCK ? ' · MOCK-modus' : ''}`);
 });

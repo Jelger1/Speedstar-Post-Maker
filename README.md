@@ -1,281 +1,110 @@
-# Post Studio — Instagram Post Maker
+# Speedstar Post Maker
 
-Een tool van één pagina om Instagram-posts te maken uit **een foto**, **je eigen
-tekst** en optioneel **een markdown-stijlgids** die de vormgeving bepaalt. Puur
-HTML, CSS en vanilla JavaScript — geen buildstap, geen framework, geen
-ingebouwde voorbeelden of merkbestanden: alles komt uit je eigen uploads.
+Genereert 100% on-brand Instagram-posts (4:5, 1080 × 1350) voor Speedstar
+Logistics: een foto, tekst in de vaste typografische hiërarchie, één van vier
+templates en een AI-assistent die in de Speedstar tone of voice schrijft.
+Puur HTML, CSS en vanilla JavaScript met een kleine Node-backend; geen
+framework, geen buildstap, geen dependencies.
+
+- Live: https://speedstar-post-maker.onrender.com
+- Bron van alle merkregels: [assets/STYLEGUIDE_Speedstar.md](assets/STYLEGUIDE_Speedstar.md)
 
 ---
 
 ## Starten
 
 ```bash
-# Aanbevolen: via een lokale server (VS Code -> Live Server, of:)
-npx serve .
+npm start            # http://localhost:3000 (zet OPENAI_API_KEY in je omgeving)
+npm run dev          # zelfde, maar met vaste AI-testvoorstellen (AI_MOCK=1)
 ```
 
-Openen door `index.html` te dubbelklikken werkt ook. Alles wat je zelf uploadt
-(foto, logo, lettertype, stijlgids) werkt dan gewoon; alleen een logo dat je
-via een pad in de frontmatter opgeeft kan de browser dan niet ophalen.
+Zonder key werkt alles behalve de AI-assistent. Open de tool via de server,
+niet via `file://`: de browser blokkeert dan het inlezen van het logo.
 
 ---
 
 ## Projectstructuur
 
 ```
-Insta-post-maker/
-├── index.html            # Dashboard: sidebar met bediening + live preview
-├── css/styles.css        # Design tokens, UI, canvas-typografie, sjablonen
+├── index.html                  # Sidebar met bediening + live preview (het canvas)
+├── css/styles.css              # Merk-tokens, Allumi Std, canvas, templates A-D, interface
 ├── js/
-│   ├── markdown.js       # Frontmatter + markdown -> HTML (marked.js of eigen fallback)
-│   ├── brandkit.js       # Huisstijl uit een stijlgids destilleren
-│   └── app.js            # State, velden-editor, AI-paneel, renderpijplijn, export
-├── server/server.js      # Backend: serveert de tool + /api/suggest (OpenAI)
-├── package.json          # Start-script voor Render (geen dependencies)
-├── render.yaml           # Render Blueprint (één klik deployen)
-└── .env.example          # Overzicht van de omgevingsvariabelen
+│   ├── typography.js           # Typografische niveaus en accentwoorden per template (pure module)
+│   └── app.js                  # State, render, foto, logo, AI-koppeling, export, opslag
+├── server/server.js            # Serveert de tool + POST /api/suggest (OpenAI, structured outputs)
+├── assets/
+│   ├── STYLEGUIDE_Speedstar.md # Design tokens, hiërarchie, templates, AI-instructies
+│   ├── brand/                  # Logo-varianten (SVG): wit, blauw/wit, kleur, beeldmerk
+│   └── fonts/                  # Allumi Std (Regular, Italic, Demi, Demi Italic, Bold, Bold Italic)
+├── render.yaml                 # Render Blueprint
+└── .env.example                # Omgevingsvariabelen
 ```
 
 ---
 
-## AI-assistent (OpenAI via Render)
+## Templates
 
-De AI-assistent schrijft complete posts op basis van een korte briefing
-("40% korting op alle plaids, alleen dit weekend" of "nog 6 dagen tot de
-opening") én je geüploade stijlgids: tone of voice, USP's, doelgroep en
-merkkleuren worden meegelezen. Je krijgt drie varianten met verschillende
-invalshoeken; één klik zet tekst én vormgeving in de tool. **Verbeter tekst**
-herschrijft wat er al staat, scherper en on-brand.
+| | Naam | Gebruik | Tekst | Logo |
+|---|---|---|---|---|
+| A | Event & Wishes | Feestdagen, wensen, speciale dagen | Links, verticaal gecentreerd: bovenkop 26pt, hoofdkop 41pt, inleiding 16pt | Rechtsonder |
+| B | Brand Awareness | Visuele impact | Geen | Gecentreerd, 80% breed |
+| C | Statement | Kernwaarden | Gecentreerd, hoofdkop 41pt of 65pt, zware navy overlay | Rechtsonder |
+| D | Data & Infographic | Feiten, percentages | Data-element 104pt, daaronder bovenkop, hoofdkop, inleiding; optioneel kleurvlak | Linksboven |
 
-De API-key staat nooit in de browser. Een kleine Node-server
-(`server/server.js`) houdt hem in een omgevingsvariabele en praat met de
-OpenAI-API (chat completions, structured outputs) zodat het antwoord altijd
-in de velden past. De server heeft geen dependencies.
+Vaste regels: safe-zone 60px, Allumi Std, merkkleuren uit de styleguide,
+accentwoorden in Bold Italic. Tekst die niet past wordt automatisch
+geschaald binnen de safe-zone.
 
-### Deployen op Render
+---
 
-1. Zet dit project in een Git-repository (GitHub/GitLab) — `node_modules/` en
-   `.env` staan al in `.gitignore`.
-2. Render → **New → Blueprint** → kies de repo. Render leest `render.yaml` en
-   maakt een Web Service `post-studio` aan.
-3. Vul onder **Environment** in:
-   - `OPENAI_API_KEY` — je OpenAI-key
-   - `ACCESS_CODE` — optioneel: een zelfgekozen code; de tool vraagt er dan
-     om, zodat niet iedereen die de URL kent jouw key kan gebruiken
-4. Deploy. Open `https://<jouw-service>.onrender.com`: de tool draait daar
-   compleet, inclusief AI, zonder verdere instellingen. Heb je een
-   `ACCESS_CODE` gezet, dan vraagt het AI-paneel die één keer.
+## AI-assistent
 
-Zonder Blueprint: New → Web Service, runtime Node, build `npm install`,
-start `npm start`, health check `/api/health`, plus dezelfde variabelen.
+De browser praat met `POST /api/suggest` op de eigen server; de OpenAI-key
+staat alleen daar. De server stuurt een vaste systeemprompt (merkpersoonlijk-
+heid, tone of voice, templateregels uit styleguide §4) en dwingt met OpenAI
+structured outputs exact deze structuur af:
 
-### Lokaal draaien (met AI)
-
-```bash
-npm install
-set OPENAI_API_KEY=sk-...            # PowerShell: $env:OPENAI_API_KEY="sk-..."
-set ACCESS_CODE=test
-npm start                            # -> http://localhost:3000
+```json
+{
+  "variants": [{
+    "bovenkop": "1 May 2026",
+    "hoofdkop": "Happy Workers Day",
+    "body": "To everyone who keeps the world moving: thank you.",
+    "accentWoorden": ["keeps the world moving"],
+    "aanbevolenTemplate": "A",
+    "dataElement": "",
+    "invalshoek": "Warm & persoonlijk",
+    "toelichting": "Een wens past bij Template A."
+  }],
+  "notes": ""
+}
 ```
 
-### Twee adressen, één AI
+"Maak post" levert drie invalshoeken, "Verbeter tekst" één herschreven
+variant. Eén klik zet tekst, accentwoorden en template in de tool.
 
-- **Render** (`https://post-studio-95r8.onrender.com`): de complete tool
-  inclusief AI-server. Dit is de hoofdlink.
-- **GitHub Pages** (`https://jelger1.github.io/insta-post-maker/`): dezelfde
-  tool als statische site. GitHub kan geen Node-server draaien, dus de AI
-  praat via de Render-server. Het adres daarvan staat vast in `index.html`
-  (`<meta name="ai-endpoint">`) en de server staat die origin toe.
+---
 
-Verhuist de Render-service naar een andere URL, pas dan die meta-tag aan. Wil
-je de tool via Live Server openen met de AI op Render, zet dan op Render
-`ALLOWED_ORIGINS=http://127.0.0.1:5500`.
+## Deployen op Render
 
-### Omgevingsvariabelen
+1. Render → **New → Blueprint** → kies deze repo. `render.yaml` maakt de Web
+   Service `speedstar-post-maker` aan.
+2. Vul `OPENAI_API_KEY` in onder **Environment**.
+3. Elke push naar `main` deployt automatisch.
 
 | Variabele | Betekenis |
 |---|---|
-| `OPENAI_API_KEY` | Verplicht. Je OpenAI-key. |
-| `ACCESS_CODE` | Optioneel. Gedeelde code die de tool meestuurt (`X-Access-Code`). |
-| `AI_MODEL` | Standaard `gpt-4.1`. Elk chatmodel met structured outputs werkt (`gpt-4.1-mini` is goedkoper). |
-| `AI_REASONING` | Alleen voor redeneermodellen (o-serie, gpt-5): `low`, `medium`, `high`. |
-| `ALLOWED_ORIGINS` | Extra origins die de API mogen aanroepen, kommagescheiden. |
+| `OPENAI_API_KEY` | Verplicht. Staat alleen op de server. |
+| `AI_MODEL` | Standaard `gpt-4.1`; elk chat-model met structured outputs. |
+| `AI_REASONING` | Alleen voor redeneermodellen: `low`, `medium`, `high`. |
+| `ALLOWED_ORIGINS` | Extra origins voor de API. GitHub Pages en localhost mogen altijd. |
 | `RATE_LIMIT` | Verzoeken per IP per 10 minuten (standaard 30). |
-| `AI_MOCK` | `1` = geen echte AI-aanroep, vaste testvariant (voor testen). |
-
-De stijlgids gaat als vast blok vooraan mee, zodat OpenAI's automatische
-prompt caching bij herhaalde aanvragen een groot deel goedkoper maakt.
-
----
-
-## Werkwijze
-
-1. **Foto** — sleep een JPG, PNG of WebP op het venster of gebruik het
-   uploadvak. Stel donkerte, zoom en uitsnede in.
-2. **Tekst** — vul de velden in (label, kop, tekst, opsomming, citaat). Laat
-   leeg wat je niet nodig hebt. Wil je meer controle, schakel dan naar
-   **Markdown**: de volledige bron, met knoppen voor kop, label, vet, lijst en
-   citaat. Wisselen is verliesvrij.
-3. **Vormgeving** — kies een sjabloon, lettertype, kleuren, uitlijning en
-   positie. Of laad een stijlgids (zie hieronder) die dit voor je invult.
-4. **Logo & handle** — upload een logo (PNG of SVG) en typ een handle.
-5. **Export** — PNG of JPG, 1× (1080 px) of 2× (2160 px). `Ctrl`/`Cmd`+`S`
-   exporteert direct; **Kopieer** zet de post op het klembord.
-
-Alles wordt onthouden in de browser: instellingen en tekst in `localStorage`,
-foto, logo en eigen lettertypen in IndexedDB. Na een herlaadbeurt staat alles
-er weer. **Reset** wist alles behalve de eigen lettertypen.
-
----
-
-## Lettertypen
-
-Onder **Vormgeving → Eigen lettertype** zijn er drie manieren:
-
-1. **Zoeken in de bibliotheek.** Alle fontbestanden in `assets/fonts/` zijn
-   doorzoekbaar op familienaam; elk resultaat wordt in het font zelf getoond.
-   Klik **Kop** of **Tekst** om een familie toe te passen. Alle snedes van de
-   familie worden geladen, dus vet en cursief renderen echt.
-2. **Automatisch uit de stijlgids.** Noemt je `.md` een lettertype (bijvoorbeeld
-   `--ff-heading: 'Aeonik'` of "Font voor koppen: Avenir Next") en zit die
-   familie in de bibliotheek, dan wordt hij direct geladen. Zit hij er niet in,
-   dan meldt de tool dat en kun je zoeken of uploaden.
-3. **Uploaden.** Een eigen OTF-, TTF-, WOFF- of WOFF2-bestand (max 8 MB) voor
-   kop en/of tekst. Een fontbestand op het venster slepen werkt ook. Wordt in
-   de browser onthouden.
-
-Fonts worden als `@font-face` ingebed, zodat ze ook in de export terechtkomen.
-
-### Bibliotheek bijwerken
-
-Zet fontbestanden in `assets/fonts/` en draai:
-
-```bash
-npm run fonts        # maakt assets/fonts/index.json (familie, stijl, gewicht, italic)
-```
-
-Commit `index.json` mee, zodat de bibliotheek ook zonder buildstap werkt.
-Render draait dit commando ook bij elke deploy. `.ttc` en `.fon` worden
-overgeslagen: browsers laden die niet via `@font-face`.
-
----
-
-## De drie manieren waarop markdown de stijl bepaalt
-
-### 1. Frontmatter bovenin je tekst
-
-Zet in de **Markdown**-stand een blok tussen `---` bovenaan. De waarden worden
-live toegepast en de schuifjes springen mee. Pas je daarna handmatig iets aan,
-dan blijft dat staan — de frontmatter wordt pas opnieuw toegepast als je het
-blok zelf wijzigt. In de **Velden**-stand blijft het blok onzichtbaar bewaard.
-
-```markdown
----
-ratio: 4:5          # 1:1 | 4:5 | 9:16 (ook: square, portret, story)
-theme: editorial    # minimal | editorial | panel | bold | band | quote
-align: left         # left | center | right (ook: links, midden, rechts)
-position: bottom    # top | middle | bottom (ook: boven, midden, onder)
-accent: "#e0483e"   # hex, rgb() of kleurnaam
-color: "#ffffff"    # tekstkleur
-panel: "#f4f2ee"    # vlakkleur voor het sjabloon 'panel'
-overlay: 55         # 0-90, donkerte van de foto
-scale: 100          # 70-145, tekstgrootte
-padding: 80         # 32-160, marge in ontwerp-pixels
-zoom: 100           # 100-180, beeldzoom
-focus: center       # top | center | bottom, uitsnede van de foto
-font: inter         # inter | playfair | grotesk | bebas | eigen | stijlgids
-badge: "@jouwmerk"
-radius: recht       # 'recht' of 0 voor strakke hoeken
-logo: https://…/logo.svg   # of 'geen'
----
-```
-
-Sleutels mogen ook Nederlands: `formaat`, `sjabloon`, `uitlijning`, `positie`,
-`donkerte`, `marge`, `tekstgrootte`, `uitsnede`, `lettertype`, `bijschrift`.
-
-### 2. Een `style`-codeblok midden in het document
-
-````markdown
-```style
-theme: bold
-accent: #e0483e
-```
-````
-
-### 3. Een complete stijlgids inlezen
-
-Sleep een stijlgids (.md) op **Merkstijl uit .md** of kies hem via de knop.
-`brandkit.js` speurt het document af op vier manieren:
-
-| Bron | Voorbeeld |
-|---|---|
-| CSS-variabelen | `--clr-accent: #e0483e;` |
-| Markdown-tabellen | `` | `--clr-accent` | `#e0483e` | Accenten | `` |
-| Losse labelregels | `Accentkleur: #e0483e` |
-| Vormregels | `border-radius: 0` of "strakke rechte hoeken" |
-
-Elke gevonden kleur krijgt een **rol** op basis van trefwoorden in het label
-(Nederlands én Engels): `accent`, `kop`, `tekst`, `vlak`, `achtergrond`. De
-eerste treffer per rol wint. Lettertypen worden herleid tot de familienaam
-(`Circular Std Book` → `Circular Std`) en verschijnen als keuze "Stijlgids".
-Staat dat font niet op je computer, upload dan het fontbestand onder **Eigen
-lettertype**. Een merknaam of domein in de stijlgids wordt de handle.
-
-Wat er gevonden is, staat direct in de sidebar als chips plus een klikbaar
-merkpalet: kies eerst het doel (accent / tekst / vlak) en klik dan een staal.
-
----
-
-## Hoe je tekst wordt opgemaakt
-
-| Onderdeel / markdown | Wordt |
-|---|---|
-| Label · `### Label` | Eyebrow: klein, hoofdletters, in de accentkleur |
-| Kop · `# Kop` | Koptekst in het kopfont (Enter = nieuwe regel) |
-| Tekst · alinea | Bodytekst; `**vet**` krijgt de accentkleur |
-| Opsomming · `- item` | Lijst met een accentstreepje |
-| Citaat · `> citaat` | Citaat met accentbalk |
-| `---` | Scheidingslijn in de accentkleur |
-
----
-
-## Sjablonen
-
-| Sjabloon | Beschrijving |
-|---|---|
-| **Minimal** | Tekst direct op de foto, alleen een zachte schaduw |
-| **Editorial** | Accentlijn langs het tekstblok |
-| **Panel** | Tekst op een licht vlak, met de ink- en kopkleur uit de stijlgids |
-| **Bold** | Koppen in een vol accentvlak |
-| **Band** | Donkere balk van rand tot rand |
-| **Quote** | Uitspraak tussen twee accentlijnen |
+| `AI_MOCK` | `1` = vaste testvoorstellen zonder OpenAI-aanroep. |
 
 ---
 
 ## Export
 
-De preview is geen benadering: het canvas wordt op ware grootte gerenderd en
-`html2canvas` schaalt het bij de export naar 1080 px breed (of 2160 bij 2×).
-Het resultaat wordt op de exacte doelmaat gezet, zodat afronding nooit een
-pixel scheelt.
-
-| Formaat | Export 1× | Export 2× |
-|---|---|---|
-| 1:1 | 1080 × 1080 | 2160 × 2160 |
-| 4:5 | 1080 × 1350 | 2160 × 2700 |
-| 9:16 | 1080 × 1920 | 2160 × 3840 |
-
----
-
-## Goed om te weten
-
-- **Slepen werkt overal**: een afbeelding wordt de achtergrond, een fontbestand
-  wordt een eigen lettertype, en een `.md` wordt automatisch als stijlgids óf
-  als tekst herkend (aan de hoeveelheid kleurtokens).
-- **Automatisch schalen** krimpt de tekst tot ze in het kader past; de
-  statusbalk toont het percentage. Uitzetten kan met de schakelaar.
-- **Zonder internet** werkt alles behalve de export en de Google-webfonts:
-  `marked.js` heeft een ingebouwde fallback-parser, `html2canvas` niet.
-- Effecten die `html2canvas` niet kan renderen (`text-wrap: balance`,
-  `color-mix()`, `backdrop-filter`, blendmodi) zijn bewust vermeden, zodat
-  preview en export niet uit elkaar lopen.
+Download als PNG of JPG op 1080 × 1350 of 2160 × 2700, of kopieer naar het
+klembord. `Ctrl`+`S` exporteert direct. De preview wordt op werkelijke
+pixelmaat gerenderd en 1-op-1 geëxporteerd, dus wat je ziet is wat je krijgt.

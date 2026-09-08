@@ -3,15 +3,18 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Post Studio — Instagram Post Maker</title>
-<meta name="description" content="Maak Instagram-posts uit een foto, je eigen tekst en een markdown-stijlgids. Live preview, export naar PNG/JPG.">
+<title>Speedstar Post Maker</title>
+<meta name="description" content="Genereer 100% on-brand Instagram-posts (4:5) voor Speedstar Logistics: foto, tekst, template en export naar PNG/JPG.">
 
+<!-- Interface-font. Het merkfont (Allumi Std) staat lokaal in assets/fonts en
+     wordt via @font-face in css/styles.css geladen. -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,500;0,700;1,500&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <!-- AI-server (Render). Nodig als de tool elders wordt gehost, bijv. GitHub Pages;
      draait de tool op Render zelf, dan is dit dezelfde site. -->
-<meta name="ai-endpoint" content="https://post-studio-95r8.onrender.com">
+<meta name="ai-endpoint" content="https://speedstar-post-maker.onrender.com">
+<link rel="icon" href="assets/brand/speedstar-mark-white.svg" type="image/svg+xml">
 <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
@@ -20,11 +23,9 @@
      ICOON-SPRITE - alle iconen inline, geen externe dependency
      ============================================================ -->
 <svg class="sprite" aria-hidden="true" focusable="false">
-  <symbol id="i-format" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></symbol>
+  <symbol id="i-layout" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></symbol>
   <symbol id="i-photo" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></symbol>
   <symbol id="i-text" viewBox="0 0 24 24"><path d="M4 7V5h16v2M9 5v14M15 19H9"/></symbol>
-  <symbol id="i-brand" viewBox="0 0 24 24"><path d="m16 3 5 5-9 9-5 1 1-5 8-10Z"/><path d="M3 21h8"/></symbol>
-  <symbol id="i-style" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="9" cy="9" r="1.4"/><circle cx="15" cy="9" r="1.4"/><circle cx="9.5" cy="15" r="1.4"/></symbol>
   <symbol id="i-logo" viewBox="0 0 24 24"><path d="M12 3 4 7v10l8 4 8-4V7l-8-4Z"/><path d="M12 12v9"/><path d="m4 7 8 5 8-5"/></symbol>
   <symbol id="i-export" viewBox="0 0 24 24"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></symbol>
   <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 17V5"/><path d="m7 10 5-5 5 5"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></symbol>
@@ -33,7 +34,6 @@
   <symbol id="i-reset" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></symbol>
   <symbol id="i-check" viewBox="0 0 24 24"><path d="m4 12 5 5L20 6"/></symbol>
   <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
-  <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z"/><path d="M14 3v5h5"/></symbol>
   <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3v6M12 15v6M3 12h6M15 12h6"/><path d="m6.5 6.5 3 3M14.5 14.5l3 3M17.5 6.5l-3 3M9.5 14.5l-3 3"/></symbol>
   <symbol id="i-warn" viewBox="0 0 24 24"><path d="M12 3 2 20h20L12 3Z"/><path d="M12 10v4M12 17.5v.5"/></symbol>
   <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
@@ -47,35 +47,49 @@
        ============================================================ -->
   <aside class="sidebar">
     <header class="brandbar">
-      <span class="brandbar__mark" aria-hidden="true"></span>
+      <span class="brandbar__mark" aria-hidden="true"><img src="assets/brand/speedstar-mark-white.svg" alt=""></span>
       <div class="brandbar__txt">
-        <strong>Post Studio</strong>
-        <span>Instagram post maker</span>
+        <strong>Speedstar Post Maker</strong>
+        <span>Instagram 4:5 &middot; on-brand generator</span>
       </div>
     </header>
 
     <div class="panels" id="panels">
 
-      <!-- ---------- 1. FORMAAT ---------- -->
-      <details class="panel" open>
+      <!-- ---------- 1. TEMPLATE ---------- -->
+      <details class="panel panel--brand" open>
         <summary class="panel__head">
-          <svg class="ico" aria-hidden="true"><use href="#i-format"/></svg>
-          <span class="panel__title">Formaat</span>
+          <svg class="ico" aria-hidden="true"><use href="#i-layout"/></svg>
+          <span class="panel__title">Template</span>
           <svg class="ico chev" aria-hidden="true"><use href="#i-chevron"/></svg>
         </summary>
         <div class="panel__body">
-          <div class="field">
-            <span class="label">Beeldverhouding</span>
-            <div class="seg seg--3" role="radiogroup" aria-label="Beeldverhouding">
-              <input type="radio" name="ratio" id="ratio-1-1" value="1:1">
-              <label for="ratio-1-1"><b>1:1</b><i>Square</i></label>
-              <input type="radio" name="ratio" id="ratio-4-5" value="4:5" checked>
-              <label for="ratio-4-5"><b>4:5</b><i>Portrait</i></label>
-              <input type="radio" name="ratio" id="ratio-9-16" value="9:16">
-              <label for="ratio-9-16"><b>9:16</b><i>Story</i></label>
-            </div>
-            <p class="hint">Portret 4:5 pakt de meeste ruimte in de feed.</p>
+          <div class="tpls" role="radiogroup" aria-label="Template">
+            <input type="radio" name="template" id="tpl-a" value="a" checked>
+            <label for="tpl-a" data-tpl="a">
+              <span class="tpls__art"></span>
+              <span class="tpls__txt"><b data-key="A">Event &amp; Wishes</b><i>Feestdagen, wensen, speciale dagen</i></span>
+            </label>
+
+            <input type="radio" name="template" id="tpl-b" value="b">
+            <label for="tpl-b" data-tpl="b">
+              <span class="tpls__art"></span>
+              <span class="tpls__txt"><b data-key="B">Brand Awareness</b><i>Beeld + groot logo, geen tekst</i></span>
+            </label>
+
+            <input type="radio" name="template" id="tpl-c" value="c">
+            <label for="tpl-c" data-tpl="c">
+              <span class="tpls__art"></span>
+              <span class="tpls__txt"><b data-key="C">Statement</b><i>Kernwaarden, gecentreerd</i></span>
+            </label>
+
+            <input type="radio" name="template" id="tpl-d" value="d">
+            <label for="tpl-d" data-tpl="d">
+              <span class="tpls__art"></span>
+              <span class="tpls__txt"><b data-key="D">Data &amp; Infographic</b><i>Feiten, percentages</i></span>
+            </label>
           </div>
+          <p class="hint">Altijd 1080 &times; 1350 (4:5), safe-zone 60px, Allumi Std, merkkleuren uit de merkhandleiding.</p>
         </div>
       </details>
 
@@ -88,15 +102,13 @@
         </summary>
         <div class="panel__body">
 
-          <!-- Dropzone: klik of sleep -->
           <div class="drop" id="imageDrop" tabindex="0" role="button" aria-label="Foto uploaden of hierheen slepen">
             <input type="file" id="imageInput" accept="image/*" hidden>
             <svg class="ico ico--lg" aria-hidden="true"><use href="#i-upload"/></svg>
             <span class="drop__title">Sleep een foto hierheen</span>
-            <span class="drop__sub">of klik om te bladeren &middot; JPG, PNG, WebP</span>
+            <span class="drop__sub">of klik om te bladeren &middot; JPG, PNG, WebP &middot; liefst high-res</span>
           </div>
 
-          <!-- Actieve foto -->
           <div class="filecard" id="imageCard" hidden>
             <span class="filecard__thumb" id="imageThumb"></span>
             <span class="filecard__meta">
@@ -109,9 +121,9 @@
           </div>
 
           <div class="field">
-            <label class="label" for="overlay">Donkerte <output id="overlayVal">45%</output></label>
-            <input type="range" id="overlay" min="0" max="90" step="1" value="45">
-            <p class="hint">Verhoogt het contrast tussen tekst en foto.</p>
+            <label class="label" for="overlay">Navy overlay <output id="overlayVal">40%</output></label>
+            <input type="range" id="overlay" min="0" max="90" step="1" value="40">
+            <p class="hint">Template A: verloop van onder naar boven. Template C: egaal en minimaal 40% voor contrast.</p>
           </div>
 
           <div class="field">
@@ -141,131 +153,61 @@
           <svg class="ico chev" aria-hidden="true"><use href="#i-chevron"/></svg>
         </summary>
         <div class="panel__body">
-          <!-- Invoermodus: losse velden (standaard) of markdown voor wie dat wil -->
-          <div class="seg seg--2 seg--sm" role="radiogroup" aria-label="Invoermodus">
-            <input type="radio" name="editMode" id="em-fields" value="fields" checked>
-            <label for="em-fields"><b>Velden</b></label>
-            <input type="radio" name="editMode" id="em-md" value="markdown">
-            <label for="em-md"><b>Markdown</b></label>
-          </div>
-
-          <!-- Velden: elk veld is één onderdeel van de post -->
+          <!-- Elk veld is één element uit de typografische hiërarchie (styleguide §2).
+               De velden sluiten aan op de JSON die de AI teruggeeft (§4). -->
           <div class="fields" id="fieldsEditor">
             <div class="field">
-              <label class="label" for="fLabel">Label <i class="label__opt">klein, bovenaan</i></label>
-              <input type="text" id="fLabel" placeholder="Nieuw binnen" maxlength="80" autocomplete="off">
+              <label class="label" for="fKicker">Bovenkop <i class="label__opt">Heading 3 &middot; 26pt &middot; max 4 woorden</i></label>
+              <input type="text" id="fKicker" placeholder="1 May 2026" maxlength="60" autocomplete="off">
             </div>
             <div class="field">
-              <label class="label" for="fTitle">Kop <i class="label__opt">Enter = nieuwe regel</i></label>
-              <textarea id="fTitle" rows="2" placeholder="Warmte die blijft hangen" spellcheck="true"></textarea>
+              <label class="label" for="fTitle">Hoofdkop <i class="label__opt">Heading 2 &middot; 41pt &middot; max 6 woorden</i></label>
+              <textarea id="fTitle" rows="2" placeholder="Happy Workers Day" spellcheck="true"></textarea>
             </div>
             <div class="field">
-              <label class="label" for="fBody">Tekst</label>
-              <textarea id="fBody" rows="3" placeholder="Een korte alinea. Zet **sterretjes** om een woord voor nadruk." spellcheck="true"></textarea>
+              <label class="label" for="fBody">Inleiding <i class="label__opt">16pt Demi &middot; max 2 zinnen</i></label>
+              <textarea id="fBody" rows="3" placeholder="To everyone who keeps the world moving: thank you. Today we celebrate you." spellcheck="true"></textarea>
+            </div>
+            <div class="field" data-only="d">
+              <label class="label" for="fData">Data-element <i class="label__opt">alleen Template D</i></label>
+              <input type="text" id="fData" placeholder="98%" maxlength="12" autocomplete="off">
             </div>
             <div class="field">
-              <label class="label" for="fList">Opsomming <i class="label__opt">één punt per regel</i></label>
-              <textarea id="fList" rows="2" placeholder="Gratis verzending in NL &amp; BE&#10;Voor 22:00 besteld, vandaag verzonden" spellcheck="true"></textarea>
+              <label class="label" for="fAccent">Accentwoorden <i class="label__opt">Bold Italic &middot; komma-gescheiden</i></label>
+              <input type="text" id="fAccent" placeholder="hardworking, trust" maxlength="120" autocomplete="off">
             </div>
-            <div class="field">
-              <label class="label" for="fQuote">Citaat</label>
-              <input type="text" id="fQuote" placeholder="Voor 22:00 besteld, vandaag verzonden." maxlength="220" autocomplete="off">
-            </div>
-            <p class="hint">Laat leeg wat je niet nodig hebt. <code>**vet**</code> werkt in elk veld en krijgt de accentkleur.</p>
           </div>
 
-          <!-- Markdown: de volledige bron, met opmaakknoppen -->
-          <div class="field" id="markdownEditor" hidden>
-            <label class="label" for="content">
-              Markdown
-              <output class="counter" id="charCount">0</output>
-            </label>
-            <div class="mdbar" role="toolbar" aria-label="Opmaak invoegen">
-              <button class="mdbtn" type="button" data-md="h1" title="Kop (regel)">Kop</button>
-              <button class="mdbtn" type="button" data-md="h3" title="Label (regel)">Label</button>
-              <button class="mdbtn" type="button" data-md="bold" title="Vet (selectie)"><b>B</b></button>
-              <button class="mdbtn" type="button" data-md="list" title="Opsomming (regel)">&bull; Lijst</button>
-              <button class="mdbtn" type="button" data-md="quote" title="Citaat (regel)">&ldquo; Citaat</button>
+          <div class="grid2">
+            <div class="field">
+              <span class="label">Kopgrootte <i class="label__opt">Template C</i></span>
+              <div class="seg seg--2 seg--sm" role="radiogroup" aria-label="Kopgrootte">
+                <input type="radio" name="headSize" id="hs-h2" value="h2" checked>
+                <label for="hs-h2"><b>41pt</b></label>
+                <input type="radio" name="headSize" id="hs-h1" value="h1">
+                <label for="hs-h1"><b>65pt</b></label>
+              </div>
             </div>
-            <textarea id="content" rows="10" spellcheck="true" placeholder="### Label&#10;# Je koptekst&#10;&#10;Een korte paragraaf met **nadruk**.&#10;&#10;- Kort punt&#10;- Nog een punt&#10;&#10;> Citaat"></textarea>
-            <p class="hint"><code>#</code> kop, <code>###</code> label, <code>**vet**</code>, <code>-</code> lijst, <code>&gt;</code> citaat. Een <code>---</code>-blok bovenin stuurt de vormgeving (zie README).</p>
+            <div class="field">
+              <span class="label">Tekstkleur</span>
+              <div class="seg seg--2 seg--sm" role="radiogroup" aria-label="Tekstkleur">
+                <input type="radio" name="ink" id="ink-light" value="light" checked>
+                <label for="ink-light"><b>Wit</b></label>
+                <input type="radio" name="ink" id="ink-dark" value="dark">
+                <label for="ink-dark"><b>Navy</b></label>
+              </div>
+            </div>
           </div>
-
-          <div class="row">
-            <button class="btn btn--ghost btn--sm" id="loadContentMd" type="button">
-              <svg class="ico" aria-hidden="true"><use href="#i-file"/></svg> Tekst uit .md
-            </button>
-            <button class="btn btn--ghost btn--sm" id="clearContent" type="button">
-              <svg class="ico" aria-hidden="true"><use href="#i-trash"/></svg> Leeg
-            </button>
-            <input type="file" id="contentMdInput" accept=".md,.markdown,.txt,text/markdown,text/plain" hidden>
-          </div>
-
-          <label class="switch" id="mdToggleWrap" hidden>
-            <input type="checkbox" id="mdToggle" checked>
-            <span class="switch__track"><span class="switch__dot"></span></span>
-            <span class="switch__txt">Markdown-opmaak toepassen</span>
-          </label>
 
           <label class="switch">
             <input type="checkbox" id="autoFit" checked>
             <span class="switch__track"><span class="switch__dot"></span></span>
-            <span class="switch__txt">Automatisch passend schalen</span>
+            <span class="switch__txt">Automatisch passend schalen binnen de safe-zone</span>
           </label>
         </div>
       </details>
 
-      <!-- ---------- 4. MERKSTIJL UIT MARKDOWN ---------- -->
-      <details class="panel panel--accent" open>
-        <summary class="panel__head">
-          <svg class="ico" aria-hidden="true"><use href="#i-brand"/></svg>
-          <span class="panel__title">Merkstijl uit .md</span>
-          <svg class="ico chev" aria-hidden="true"><use href="#i-chevron"/></svg>
-        </summary>
-        <div class="panel__body">
-          <div class="drop drop--sm" id="mdDrop" tabindex="0" role="button" aria-label="Stijlgids uploaden of hierheen slepen">
-            <input type="file" id="mdInput" accept=".md,.markdown,.txt,text/markdown,text/plain" hidden>
-            <svg class="ico ico--lg" aria-hidden="true"><use href="#i-file"/></svg>
-            <span class="drop__title">Sleep je stijlgids (.md) hierheen</span>
-            <span class="drop__sub">CSS-variabelen, kleurtabellen &amp; fonts worden uitgelezen</span>
-          </div>
-
-          <div class="row">
-            <button class="btn btn--ghost btn--sm" id="loadBrandMd" type="button">
-              <svg class="ico" aria-hidden="true"><use href="#i-file"/></svg> Stijlgids kiezen
-            </button>
-            <button class="btn btn--ghost btn--sm" id="brandReset" type="button" hidden>
-              <svg class="ico" aria-hidden="true"><use href="#i-trash"/></svg> Wissen
-            </button>
-          </div>
-
-          <!-- Rapport van wat er uit de markdown is gehaald -->
-          <div class="report" id="brandReport" hidden>
-            <div class="report__head">
-              <svg class="ico" aria-hidden="true"><use href="#i-check"/></svg>
-              <b id="brandFile">stijlgids.md</b>
-            </div>
-            <ul class="chips" id="brandChips"></ul>
-
-            <div class="field">
-              <span class="label">Merkpalet &mdash; klik om toe te passen op:</span>
-              <div class="seg seg--3 seg--sm" role="radiogroup" aria-label="Palettoewijzing">
-                <input type="radio" name="swatchTarget" id="st-accent" value="accent" checked>
-                <label for="st-accent"><b>Accent</b></label>
-                <input type="radio" name="swatchTarget" id="st-text" value="textColor">
-                <label for="st-text"><b>Tekst</b></label>
-                <input type="radio" name="swatchTarget" id="st-panel" value="panelColor">
-                <label for="st-panel"><b>Vlak</b></label>
-              </div>
-              <div class="swatches" id="brandSwatches"></div>
-            </div>
-          </div>
-
-          <p class="hint">Geen stijlgids? Zet bovenin je tekst-<code>.md</code> een frontmatter-blok met <code>accent:</code>, <code>theme:</code>, <code>align:</code> enz. &mdash; zie README.</p>
-        </div>
-      </details>
-
-      <!-- ---------- 4b. AI-ASSISTENT ---------- -->
+      <!-- ---------- 4. AI-ASSISTENT ---------- -->
       <details class="panel panel--ai" id="aiPanel" open>
         <summary class="panel__head">
           <svg class="ico" aria-hidden="true"><use href="#i-ai"/></svg>
@@ -275,9 +217,9 @@
         </summary>
         <div class="panel__body">
           <div class="field">
-            <label class="label" for="aiBrief">Wat wil je posten? <i class="label__opt">zo concreet als je wilt</i></label>
-            <textarea id="aiBrief" rows="3" spellcheck="true" placeholder="Bijv. 40% korting op alle plaids, alleen dit weekend&#10;Of: nog 6 dagen tot de opening van de winkel in Utrecht&#10;Of: sfeerpost over een zondagochtend op de bank"></textarea>
-            <p class="hint" id="aiContext">De AI leest je stijlgids mee zodra je die laadt: tone of voice, USP's en kleuren worden dan overgenomen.</p>
+            <label class="label" for="aiBrief">Wat wil je posten? <i class="label__opt">Nederlands mag, de post wordt Engels</i></label>
+            <textarea id="aiBrief" rows="3" spellcheck="true" placeholder="Bijv. Workers Day, bedank onze chauffeurs en planners&#10;Of: 98% van onze leveringen is op tijd&#10;Of: kernwaarde: betrouwbaar, altijd in beweging"></textarea>
+            <p class="hint" id="aiContext">De AI schrijft in de Speedstar tone of voice (professioneel, betrouwbaar, daadkrachtig) en kiest een passend template.</p>
           </div>
 
           <div class="row">
@@ -290,217 +232,53 @@
             </button>
           </div>
 
-          <!-- Voorstellen: klik om toe te passen -->
           <div class="ai-results" id="aiResults" hidden></div>
           <p class="hint" id="aiNotes" hidden></p>
-
-          <!-- Alleen zichtbaar als de tool NIET op zijn eigen server draait, of als
-               de server een toegangscode vraagt. Op Render regelt hij zichzelf. -->
-          <details class="subpanel" id="aiSettings" hidden>
-            <summary class="subpanel__head">AI-instellingen <span class="ai-status" id="aiStatus">niet gecontroleerd</span></summary>
-            <div class="subpanel__body">
-              <div class="field" id="aiEndpointField">
-                <label class="label" for="aiEndpoint">Server-URL <i class="label__opt">leeg = deze site</i></label>
-                <input type="text" id="aiEndpoint" placeholder="https://post-studio.onrender.com" autocomplete="off" spellcheck="false">
-              </div>
-              <div class="field">
-                <label class="label" for="aiCode">Toegangscode <i class="label__opt">zoals ingesteld op de server</i></label>
-                <input type="password" id="aiCode" placeholder="••••••" autocomplete="off">
-              </div>
-              <div class="row">
-                <button class="btn btn--ghost btn--sm" id="aiCheck" type="button">
-                  <svg class="ico" aria-hidden="true"><use href="#i-check"/></svg> Verbinding testen
-                </button>
-              </div>
-              <p class="hint">De API-key staat alleen op de server (Render). Zie de README voor het opzetten.</p>
-            </div>
-          </details>
         </div>
       </details>
 
-      <!-- ---------- 5. VORMGEVING ---------- -->
-      <details class="panel" open>
-        <summary class="panel__head">
-          <svg class="ico" aria-hidden="true"><use href="#i-style"/></svg>
-          <span class="panel__title">Vormgeving</span>
-          <svg class="ico chev" aria-hidden="true"><use href="#i-chevron"/></svg>
-        </summary>
-        <div class="panel__body">
-          <div class="field">
-            <span class="label">Sjabloon</span>
-            <div class="themes" role="radiogroup" aria-label="Sjabloon">
-              <input type="radio" name="theme" id="th-minimal" value="minimal">
-              <label for="th-minimal" data-theme="minimal"><span class="themes__art"></span>Minimal</label>
-              <input type="radio" name="theme" id="th-editorial" value="editorial" checked>
-              <label for="th-editorial" data-theme="editorial"><span class="themes__art"></span>Editorial</label>
-              <input type="radio" name="theme" id="th-panel" value="panel">
-              <label for="th-panel" data-theme="panel"><span class="themes__art"></span>Vlak</label>
-              <input type="radio" name="theme" id="th-bold" value="bold">
-              <label for="th-bold" data-theme="bold"><span class="themes__art"></span>Bold</label>
-              <input type="radio" name="theme" id="th-band" value="band">
-              <label for="th-band" data-theme="band"><span class="themes__art"></span>Band</label>
-              <input type="radio" name="theme" id="th-quote" value="quote">
-              <label for="th-quote" data-theme="quote"><span class="themes__art"></span>Quote</label>
-            </div>
-          </div>
-
-          <div class="field">
-            <label class="label" for="font">Lettertype</label>
-            <select id="font"></select>
-          </div>
-
-          <!-- Lettertypen: bibliotheek (assets/fonts, doorzoekbaar) of eigen upload.
-               Beide worden als @font-face ingebed zodat ook de export ze gebruikt. -->
-          <div class="field">
-            <span class="label">Eigen lettertype <i class="label__opt">kop &amp; tekst</i></span>
-            <div class="filerow">
-              <span class="filerow__slot">Kop</span>
-              <span class="filerow__name" id="customHeadName">geen</span>
-              <button class="btn btn--ghost btn--sm" id="customHeadBtn" type="button" title="Eigen bestand uploaden (OTF, TTF, WOFF, WOFF2)">
-                <svg class="ico" aria-hidden="true"><use href="#i-upload"/></svg> Upload
-              </button>
-              <button class="iconbtn" id="customHeadClear" type="button" aria-label="Kopfont verwijderen" hidden>
-                <svg class="ico" aria-hidden="true"><use href="#i-trash"/></svg>
-              </button>
-            </div>
-            <div class="filerow">
-              <span class="filerow__slot">Tekst</span>
-              <span class="filerow__name" id="customBodyName">geen</span>
-              <button class="btn btn--ghost btn--sm" id="customBodyBtn" type="button" title="Eigen bestand uploaden (OTF, TTF, WOFF, WOFF2)">
-                <svg class="ico" aria-hidden="true"><use href="#i-upload"/></svg> Upload
-              </button>
-              <button class="iconbtn" id="customBodyClear" type="button" aria-label="Tekstfont verwijderen" hidden>
-                <svg class="ico" aria-hidden="true"><use href="#i-trash"/></svg>
-              </button>
-            </div>
-            <input type="file" id="customFontInput" accept=".otf,.ttf,.woff,.woff2,font/otf,font/ttf,font/woff,font/woff2" hidden>
-
-            <div class="fontlib" id="fontLib">
-              <input type="search" id="fontSearch" class="fontlib__search" placeholder="Zoek in de bibliotheek…" autocomplete="off" spellcheck="false" aria-label="Zoek een lettertype">
-              <div class="fontlib__list" id="fontResults" hidden></div>
-              <p class="hint" id="fontLibHint">Bibliotheek laden…</p>
-            </div>
-          </div>
-
-          <div class="grid2">
-            <div class="field">
-              <label class="label" for="accent">Accentkleur</label>
-              <span class="colorwrap"><input type="color" id="accent" value="#af1c23"><i id="accentHex">#af1c23</i></span>
-            </div>
-            <div class="field">
-              <label class="label" for="textColor">Tekstkleur</label>
-              <span class="colorwrap"><input type="color" id="textColor" value="#ffffff"><i id="textHex">#ffffff</i></span>
-            </div>
-          </div>
-
-          <div class="field">
-            <span class="label">Uitlijning</span>
-            <div class="seg seg--3" role="radiogroup" aria-label="Tekstuitlijning">
-              <input type="radio" name="align" id="al-left" value="left" checked>
-              <label for="al-left"><b>Links</b></label>
-              <input type="radio" name="align" id="al-center" value="center">
-              <label for="al-center"><b>Midden</b></label>
-              <input type="radio" name="align" id="al-right" value="right">
-              <label for="al-right"><b>Rechts</b></label>
-            </div>
-          </div>
-
-          <div class="field">
-            <span class="label">Positie</span>
-            <div class="seg seg--3" role="radiogroup" aria-label="Verticale positie">
-              <input type="radio" name="valign" id="va-top" value="top">
-              <label for="va-top"><b>Boven</b></label>
-              <input type="radio" name="valign" id="va-middle" value="middle">
-              <label for="va-middle"><b>Midden</b></label>
-              <input type="radio" name="valign" id="va-bottom" value="bottom" checked>
-              <label for="va-bottom"><b>Onder</b></label>
-            </div>
-          </div>
-
-          <div class="grid2">
-            <div class="field">
-              <label class="label" for="textScale">Tekstgrootte <output id="textScaleVal">100%</output></label>
-              <input type="range" id="textScale" min="70" max="145" step="1" value="100">
-            </div>
-            <div class="field">
-              <label class="label" for="padding">Marge <output id="paddingVal">80</output></label>
-              <input type="range" id="padding" min="32" max="160" step="4" value="80">
-            </div>
-          </div>
-
-          <label class="switch">
-            <input type="checkbox" id="sharpCorners" checked>
-            <span class="switch__track"><span class="switch__dot"></span></span>
-            <span class="switch__txt">Strakke rechte hoeken</span>
-          </label>
-        </div>
-      </details>
-
-      <!-- ---------- 6. LOGO & HANDLE ---------- -->
+      <!-- ---------- 5. LOGO & KLEURVLAK ---------- -->
       <details class="panel">
         <summary class="panel__head">
           <svg class="ico" aria-hidden="true"><use href="#i-logo"/></svg>
-          <span class="panel__title">Logo &amp; handle</span>
+          <span class="panel__title">Logo &amp; kleurvlak</span>
           <svg class="ico chev" aria-hidden="true"><use href="#i-chevron"/></svg>
         </summary>
         <div class="panel__body">
           <div class="field">
-            <label class="label" for="badge">Handle / bijschrift</label>
-            <input type="text" id="badge" placeholder="@jouwmerk" maxlength="40" autocomplete="off">
+            <span class="label">Logovariant <i class="label__opt">positie volgt het template</i></span>
+            <div class="seg seg--3 seg--sm" role="radiogroup" aria-label="Logovariant">
+              <input type="radio" name="logoVariant" id="lv-white" value="white" checked>
+              <label for="lv-white"><span class="sw" style="background:#fff"></span><b>Wit</b></label>
+              <input type="radio" name="logoVariant" id="lv-blue-white" value="blue-white">
+              <label for="lv-blue-white"><span class="sw" style="background:linear-gradient(90deg,#305bad 50%,#fff 50%)"></span><b>Blauw / wit</b></label>
+              <input type="radio" name="logoVariant" id="lv-color" value="color">
+              <label for="lv-color"><span class="sw" style="background:linear-gradient(90deg,#305bad 50%,#221f5e 50%)"></span><b>Kleur</b></label>
+            </div>
+            <p class="hint">A en C: rechtsonder. B: groot gecentreerd (80% breed). D: linksboven.</p>
           </div>
 
-          <div class="field">
-            <span class="label">Logo <i class="label__opt">PNG of SVG, liefst transparant</i></span>
-            <div class="filerow">
-              <span class="filerow__name" id="logoName">geen</span>
-              <button class="btn btn--ghost btn--sm" id="logoUploadBtn" type="button">
-                <svg class="ico" aria-hidden="true"><use href="#i-upload"/></svg> Kies
-              </button>
-              <button class="iconbtn" id="logoClear" type="button" aria-label="Logo verwijderen" hidden>
-                <svg class="ico" aria-hidden="true"><use href="#i-trash"/></svg>
-              </button>
-            </div>
-            <input type="file" id="logoInput" accept="image/*,.svg" hidden>
-          </div>
-
-          <div class="field">
-            <span class="label">Logokleur <i class="label__opt">voor eenkleurige logo's</i></span>
-            <div class="seg seg--3 seg--sm" role="radiogroup" aria-label="Logokleur">
-              <input type="radio" name="logoTint" id="lt-none" value="none" checked>
-              <label for="lt-none"><b>Origineel</b></label>
-              <input type="radio" name="logoTint" id="lt-white" value="white">
-              <label for="lt-white"><b>Wit</b></label>
-              <input type="radio" name="logoTint" id="lt-black" value="black">
-              <label for="lt-black"><b>Zwart</b></label>
-            </div>
-            <p class="hint">Zet een zwart logo om naar wit voor op donkere foto's (of andersom). Werkt met SVG en transparante PNG.</p>
-          </div>
-
-          <div class="grid2">
-            <div class="field">
-              <label class="label" for="logoSize">Logogrootte <output id="logoSizeVal">120</output></label>
-              <input type="range" id="logoSize" min="60" max="320" step="4" value="120">
-            </div>
-            <div class="field">
-              <label class="label" for="logoPos">Positie</label>
-              <select id="logoPos">
-                <option value="tl">Linksboven</option>
-                <option value="tr">Rechtsboven</option>
-                <option value="bl">Linksonder</option>
-                <option value="br" selected>Rechtsonder</option>
-              </select>
+          <div class="field" data-only="d">
+            <span class="label">Kleurvlak achter de inhoud <i class="label__opt">alleen Template D</i></span>
+            <div class="seg seg--3 seg--sm" role="radiogroup" aria-label="Kleurvlak">
+              <input type="radio" name="plate" id="pl-none" value="none" checked>
+              <label for="pl-none"><b>Geen</b></label>
+              <input type="radio" name="plate" id="pl-navy" value="navy">
+              <label for="pl-navy"><span class="sw" style="background:#221f5e"></span><b>Navy</b></label>
+              <input type="radio" name="plate" id="pl-blue" value="blue">
+              <label for="pl-blue"><span class="sw" style="background:#305bad"></span><b>Helderblauw</b></label>
             </div>
           </div>
 
-          <label class="switch">
-            <input type="checkbox" id="logoPlate">
+          <label class="switch" data-only="d">
+            <input type="checkbox" id="dataAccent">
             <span class="switch__track"><span class="switch__dot"></span></span>
-            <span class="switch__txt">Wit vlak achter logo</span>
+            <span class="switch__txt">Data-element in accentkleur (oranje)</span>
           </label>
         </div>
       </details>
 
-      <!-- ---------- 7. EXPORT ---------- -->
+      <!-- ---------- 6. EXPORT ---------- -->
       <details class="panel" open>
         <summary class="panel__head">
           <svg class="ico" aria-hidden="true"><use href="#i-export"/></svg>
@@ -521,8 +299,8 @@
             <div class="field">
               <label class="label" for="exportScale">Resolutie</label>
               <select id="exportScale">
-                <option value="1" selected>1&times; &mdash; 1080px</option>
-                <option value="2">2&times; &mdash; 2160px</option>
+                <option value="1" selected>1&times; &mdash; 1080 &times; 1350</option>
+                <option value="2">2&times; &mdash; 2160 &times; 2700</option>
               </select>
             </div>
           </div>
@@ -554,11 +332,11 @@
     <header class="topbar">
       <div class="topbar__info">
         <h1>Live preview</h1>
-        <p id="statusLine">Sleep een foto en tik je tekst &mdash; alles ververst direct.</p>
+        <p id="statusLine">Kies een template, sleep een foto en tik je tekst &mdash; alles ververst direct.</p>
       </div>
       <div class="topbar__meta">
         <span class="pill" id="dimPill">1080 &times; 1350</span>
-        <span class="pill pill--soft" id="themePill">Editorial</span>
+        <span class="pill pill--soft" id="themePill">Template A</span>
       </div>
     </header>
 
@@ -576,17 +354,36 @@
 
     <section class="stage" id="stage">
       <div class="canvas-shell" id="canvasShell">
-        <!-- Dit element wordt 1-op-1 geexporteerd door html2canvas -->
-        <div class="post-canvas theme-editorial" id="postCanvas">
+        <!-- ============================================================
+             POST-CANVAS — wordt 1-op-1 geëxporteerd door html2canvas.
+             Template via data-template="a|b|c|d"; modifiers als class:
+               ink-dark      navy tekst i.p.v. wit
+               head-xl       hoofdkop 65pt i.p.v. 41pt (Template C)
+               plate-navy /  solide merkkleurvlak achter de inhoud (Template D)
+               plate-blue
+               data-accent   data-element in oranje (Template D)
+             Lagen (z-index): foto 0 → overlay 1 → tekst 2 → logo 3
+             ============================================================ -->
+        <div class="post-canvas" id="postCanvas" data-template="a">
           <div class="pc-image" id="pcImage"></div>
           <div class="pc-overlay" id="pcOverlay"></div>
+
+          <!-- Tekstcontainer: inset = safe-zone (60px); uitlijning per template -->
           <div class="pc-content" id="pcContent">
             <div class="pc-body" id="pcBody">
-              <div class="pc-flow" id="pcFlow"></div>
+              <div class="pc-flow" id="pcFlow">
+                <div class="pc-data" id="pcData"></div>
+                <h3 class="ss-h3" id="pcKicker"></h3>
+                <h2 class="ss-h2" id="pcTitle"></h2>
+                <p class="ss-intro" id="pcIntro"></p>
+              </div>
             </div>
           </div>
-          <div class="pc-badge" id="pcBadge" hidden></div>
-          <img class="pc-logo" id="pcLogo" alt="" hidden>
+
+          <!-- Logo: A/C rechtsonder, B gecentreerd 80%, D linksboven (CSS) -->
+          <div class="pc-logo" id="pcLogoBox">
+            <img id="pcLogo" src="assets/brand/speedstar-logo-white.svg" alt="Speedstar Logistics">
+          </div>
 
           <!-- Empty state: alleen zichtbaar zonder foto -->
           <div class="pc-empty" id="pcEmpty">
@@ -599,7 +396,7 @@
       <div class="stage__drophint" id="stageDropHint">
         <svg class="ico ico--xl" aria-hidden="true"><use href="#i-upload"/></svg>
         <b>Laat los</b>
-        <span>Afbeelding wordt de achtergrond &middot; .md wordt de stijl</span>
+        <span>Afbeelding wordt de achtergrond</span>
       </div>
     </section>
 
@@ -611,7 +408,7 @@
       <span class="sep"></span>
       <span id="fitInfo">Schaal 100%</span>
       <span class="sep"></span>
-      <span id="brandInfo">Geen stijlgids geladen</span>
+      <span id="brandInfo">Merkstijl: Speedstar Logistics (juni 2026)</span>
       <span class="sep"></span>
       <span id="aiInfo">AI: niet verbonden</span>
     </footer>
@@ -633,13 +430,11 @@
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<!-- Libraries: markdown-parsing + canvas-export (met eigen fallback in js/markdown.js) -->
-<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js" defer></script>
+<!-- Canvas-export -->
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" defer></script>
 
-<!-- Eigen modules -->
-<script src="js/markdown.js" defer></script>
-<script src="js/brandkit.js" defer></script>
+<!-- Eigen modules: typografie-/templateregels (styleguide §2-3), dan de app -->
+<script src="js/typography.js" defer></script>
 <script src="js/app.js" defer></script>
 </body>
 </html>
