@@ -1,0 +1,24 @@
+# Render Blueprint — maakt in één keer een Web Service voor Post Studio.
+# Dashboard -> New -> Blueprint -> kies deze repo. Vul daarna de twee
+# "sync: false"-variabelen in onder Environment.
+services:
+  - type: web
+    name: post-studio
+    runtime: node
+    plan: free
+    buildCommand: npm install --omit=dev && npm run fonts
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: OPENAI_API_KEY
+        sync: false          # plak je key in het Render-dashboard, nooit in git
+      - key: ACCESS_CODE
+        sync: false          # optioneel: gedeelde code die de tool meestuurt
+      - key: AI_MODEL
+        value: gpt-4.1
+      - key: RATE_LIMIT
+        value: "30"
+      - key: ALLOWED_ORIGINS
+        value: https://jelger1.github.io
