@@ -39,6 +39,21 @@
     'navy':      { ink: '#221f5e', label: 'navy' }
   };
   var WATERMARK_INK = '#ffffff';
+
+  /* Achtergrondkleur van het canvas: zichtbaar zodra er geen foto is. Het
+     ontwerp gebruikt hiervoor #305bad (pagina 9) en #96bed6 (pagina 10). */
+  var BACKGROUNDS = {
+    'navy':      { color: '#221f5e', label: 'navy' },
+    'blue':      { color: '#305bad', label: 'blauw' },
+    'lightblue': { color: '#96bed6', label: 'lichtblauw' },
+    'ice':       { color: '#ccdbdb', label: 'ijsblauw' },
+    'white':     { color: '#ffffff', label: 'wit' }
+  };
+  function bgColor() { return (BACKGROUNDS[state.bgColor] || BACKGROUNDS.navy).color; }
+
+  /* Template B is het watermerk-template: bij het kiezen ervan gaat het
+     watermerk aan op 45% (pagina 9 van het ontwerp). */
+  var TEMPLATE_B_WATERMARK = 45;
   var IS_FILE = window.location.protocol === 'file:';
   var SERVER_HINT = 'Start de tool via een lokale server (npm start, of VS Code "Live Server").';
   var SERVER_HINT_HTML = 'Start de tool via een lokale server: <code>npm start</code> of VS Code <b>Live Server</b>';
@@ -55,6 +70,7 @@
     template: 'a',
     image: null, imageName: '', imageRatio: null,
     overlay: 40, zoom: 100, focus: 'center', gradient: 'none', gradientStrength: 100,
+    bgColor: 'navy',
     kicker: '', title: '', intro: '', data: '', accents: '',
     headSize: 'h2', ink: 'light', autoFit: true, accentLightblue: true,
     textPos: 'top', textAlign: 'left',
@@ -257,6 +273,7 @@
     var cls = [
       'post-canvas',
       state.image ? 'has-image' : '',
+      TYPO.wordCount(fields(), state.template) ? 'has-text' : '',
       state.ink === 'dark' ? 'ink-dark' : '',
       'tpos-' + state.textPos,
       'talign-' + state.textAlign,
@@ -272,6 +289,7 @@
     c.style.setProperty('--ov', (state.overlay / 100).toFixed(3));
     c.style.setProperty('--wm', (state.watermarkOpacity / 100).toFixed(3));
     c.style.setProperty('--grad-s', (state.gradientStrength / 100).toFixed(3));
+    c.style.setProperty('--canvas-bg', bgColor());
 
     renderLogo();
     renderWatermark();
@@ -320,6 +338,7 @@
     setRadio('textPos', state.textPos);
     setRadio('textAlign', state.textAlign);
     setRadio('gradient', state.gradient);
+    setRadio('bgColor', state.bgColor);
     setRadio('logoType', state.logoType);
     setRadio('logoVariant', state.logoVariant);
     setRadio('plate', state.plate);
@@ -395,6 +414,10 @@
     var t = TYPO.normTemplate(key);
     if (!t || t === state.template) return;
     state.template = t;
+    if (t === 'b' && !state.watermark) {
+      state.watermark = true;
+      state.watermarkOpacity = TEMPLATE_B_WATERMARK;
+    }
     var spec = TYPO.TEMPLATES[t];
     el.statusLine.textContent = spec.short + ' — ' + spec.hint;
     scheduleRender();
@@ -1072,6 +1095,7 @@
     bindRadio('textPos', 'textPos');
     bindRadio('textAlign', 'textAlign');
     bindRadio('gradient', 'gradient');
+    bindRadio('bgColor', 'bgColor');
     bindRadio('logoType', 'logoType');
     bindRadio('logoVariant', 'logoVariant');
     bindRadio('plate', 'plate');
@@ -1245,7 +1269,7 @@
           allowTaint: false,
           logging: false,
           imageTimeout: 20000,
-          backgroundColor: '#221f5e',
+          backgroundColor: bgColor(),
           onclone: function (doc) {
             var empty = doc.getElementById('pcEmpty');
             if (empty) empty.style.display = 'none';
@@ -1260,7 +1284,7 @@
         out.width = CANVAS.w * mult;
         out.height = CANVAS.h * mult;
         var ctx = out.getContext('2d');
-        if (mime === 'image/jpeg') { ctx.fillStyle = '#221f5e'; ctx.fillRect(0, 0, out.width, out.height); }
+        if (mime === 'image/jpeg') { ctx.fillStyle = bgColor(); ctx.fillRect(0, 0, out.width, out.height); }
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = 'high';
         ctx.drawImage(raw, 0, 0, raw.width, raw.height, 0, 0, out.width, out.height);
@@ -1373,6 +1397,7 @@
     if (state.logoVariant !== 'auto' && !LOGOS[state.logoVariant]) state.logoVariant = DEFAULTS.logoVariant;
     if (['mark', 'full'].indexOf(state.logoType) === -1) state.logoType = DEFAULTS.logoType;
     if (state.gradient !== 'none' && !GRADIENTS[state.gradient]) state.gradient = DEFAULTS.gradient;
+    if (!BACKGROUNDS[state.bgColor]) state.bgColor = DEFAULTS.bgColor;
     state.watermarkOpacity = clamp(state.watermarkOpacity, 5, 60);
     state.gradientStrength = clamp(state.gradientStrength, 20, 100);
     if (['none', 'navy', 'blue'].indexOf(state.plate) === -1) state.plate = DEFAULTS.plate;

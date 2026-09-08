@@ -393,6 +393,7 @@ select option { background: var(--surface-2); }
 .seg--2 { grid-template-columns: repeat(2, 1fr); }
 .seg--3 { grid-template-columns: repeat(3, 1fr); }
 .seg--4 { grid-template-columns: repeat(4, 1fr); }
+.seg--5 { grid-template-columns: repeat(5, 1fr); }
 .seg input { position: absolute; top: 0; left: 0; width: 1px; height: 1px; margin: 0; opacity: 0; pointer-events: none; }
 .seg label {
   display: flex;
@@ -840,7 +841,9 @@ input[type="range"]::-moz-range-thumb { width: 13px; height: 13px; border-radius
   width:  calc(var(--u) * var(--canvas-w) * 1px);
   height: calc(var(--u) * var(--canvas-h) * 1px);
 
-  background: var(--color-brand-navy);
+  /* Achtergrondkleur: zichtbaar zodra er geen foto is. app.js zet
+     --canvas-bg vanuit de keuze in de zijbalk. */
+  background: var(--canvas-bg, var(--color-brand-navy));
   color: var(--ink);
   font-family: var(--font-primary);
   font-weight: var(--font-weight-regular);
@@ -991,13 +994,13 @@ input[type="range"]::-moz-range-thumb { width: 13px; height: 13px; border-radius
   z-index: 3;
   width: calc(var(--u) * var(--logo-w) * 1px);
 }
-.post-canvas.logo-mark:not([data-template="b"]) .pc-logo { width: calc(var(--u) * var(--mark-w) * 1px); }
+.post-canvas.logo-mark .pc-logo { width: calc(var(--u) * var(--mark-w) * 1px); }
 
 .pc-logo img, .pc-logo svg { display: block; width: 100%; height: auto; }
 
-/* Met het grote watermerk vervalt het kleine logo (voorbeeldpost 21);
-   het grote logo van Template B blijft. */
-.post-canvas.watermark-on:not([data-template="b"]) .pc-logo { display: none; }
+/* Met het grote watermerk vervalt het kleine logo, in elk template
+   (voorbeeldpost 21 en pagina 9 van het ontwerp hebben er geen). */
+.post-canvas.watermark-on .pc-logo { display: none; }
 
 /* --- Empty state (alleen zonder foto; nooit in de export) --- */
 .pc-empty {
@@ -1019,7 +1022,11 @@ input[type="range"]::-moz-range-thumb { width: 13px; height: 13px; border-radius
 }
 .pc-empty b { font-size: 14px; color: rgba(255,255,255,.8); }
 .pc-empty span { font-size: 12px; max-width: 220px; line-height: 1.4; }
-.has-image .pc-empty, .is-exporting .pc-empty { display: none; }
+/* De melding verdwijnt zodra er iets op het canvas staat: een foto, tekst of
+   het watermerk. Een vlakke achtergrondkleur is een geldige keuze, dus dan
+   moet er niet om een foto gevraagd worden. */
+.has-image .pc-empty, .has-text .pc-empty,
+.watermark-on .pc-empty, .is-exporting .pc-empty { display: none; }
 
 
 /* =============================================================================
@@ -1057,23 +1064,13 @@ input[type="range"]::-moz-range-thumb { width: 13px; height: 13px; border-radius
 }
 [data-template="a"] .pc-logo { right: var(--safe); bottom: var(--safe); }
 
-/* --- Template B: Brand Awareness — foto + groot logo, exact gecentreerd ---
-   Geen tekst. Het logo staat los van de safe-zone: de laag beslaat het hele
-   canvas en centreert de tekening met flexbox, horizontaal én verticaal. */
-[data-template="b"] .pc-content { display: none; }
-[data-template="b"] .pc-logo {
-  inset: 0;
-  width: auto;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-/* De tekening zelf wordt door de flexbox exact gecentreerd, ongeacht de hoogte.
-   Voorwaarde is dat de SVG een echte hoogte heeft: app.js zet daarom
-   width/height-attributen uit de viewBox op elke ingeladen SVG. */
-[data-template="b"] .pc-logo img, [data-template="b"] .pc-logo svg { width: 80%; height: auto; }
-/* Het beeldmerk is bijna vierkant: 50% breed weegt visueel als het woordmerk op 80% */
-[data-template="b"].logo-mark .pc-logo img, [data-template="b"].logo-mark .pc-logo svg { width: 50%; }
+/* --- Template B: Watermerk & tekst — pagina 9 van het ontwerp ---
+   Groot beeldmerk als watermerk over een vlakke achtergrond of foto, met de
+   tekst links binnen de marge. app.js zet het watermerk bij het kiezen van
+   dit template aan op 45%. De kop is kleiner dan in Template A: het ontwerp
+   zet hem op 30,4pt in zijn eigen font, wat in Allumi Std op 34pt uitkomt. */
+[data-template="b"] { --fs-title: 34; --fs-h1: 48; }   /* Groot = 48pt in dit template */
+[data-template="b"] .pc-logo { right: var(--safe); bottom: var(--safe); }
 
 /* --- Template C: Krachtige Statements — zware overlay ---
    Overlay nooit lichter dan .4; accenten Bold Italic. Logo rechtsonder.

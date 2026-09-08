@@ -74,7 +74,7 @@
             <input type="radio" name="template" id="tpl-b" value="b">
             <label for="tpl-b" data-tpl="b">
               <span class="tpls__art"></span>
-              <span class="tpls__txt"><b data-key="B">Brand Awareness</b><i>Beeld + groot logo, geen tekst</i></span>
+              <span class="tpls__txt"><b data-key="B">Watermerk &amp; tekst</b><i>Groot beeldmerk, tekst links</i></span>
             </label>
 
             <input type="radio" name="template" id="tpl-c" value="c">
@@ -101,6 +101,23 @@
           <svg class="ico chev" aria-hidden="true"><use href="#i-chevron"/></svg>
         </summary>
         <div class="panel__body">
+
+          <div class="field">
+            <span class="label">Achtergrondkleur <i class="label__opt">zichtbaar zonder foto</i></span>
+            <div class="seg seg--5 seg--sm" role="radiogroup" aria-label="Achtergrondkleur">
+              <input type="radio" name="bgColor" id="bg-navy" value="navy" checked>
+              <label for="bg-navy"><span class="sw" style="background:#221f5e"></span><b>Navy</b></label>
+              <input type="radio" name="bgColor" id="bg-blue" value="blue">
+              <label for="bg-blue"><span class="sw" style="background:#305bad"></span><b>Blauw</b></label>
+              <input type="radio" name="bgColor" id="bg-lightblue" value="lightblue">
+              <label for="bg-lightblue"><span class="sw" style="background:#96bed6"></span><b>Licht</b></label>
+              <input type="radio" name="bgColor" id="bg-ice" value="ice">
+              <label for="bg-ice"><span class="sw" style="background:#ccdbdb"></span><b>IJs</b></label>
+              <input type="radio" name="bgColor" id="bg-white" value="white">
+              <label for="bg-white"><span class="sw" style="background:#fff"></span><b>Wit</b></label>
+            </div>
+            <p class="hint">Zonder foto vult deze kleur het hele canvas. Zet bij een lichte kleur de tekstkleur op Navy.</p>
+          </div>
 
           <div class="drop" id="imageDrop" tabindex="0" role="button" aria-label="Foto uploaden of hierheen slepen">
             <input type="file" id="imageInput" accept="image/*" hidden>
@@ -225,7 +242,7 @@
 
           <div class="grid2">
             <div class="field">
-              <span class="label">Kopgrootte <i class="label__opt">Template C</i></span>
+              <span class="label">Kopgrootte <i class="label__opt">Template B en C</i></span>
               <div class="seg seg--2 seg--sm" role="radiogroup" aria-label="Kopgrootte">
                 <input type="radio" name="headSize" id="hs-h2" value="h2" checked>
                 <label for="hs-h2"><b>Normaal</b></label>
@@ -304,7 +321,7 @@
               <input type="radio" name="logoType" id="lt-full" value="full">
               <label for="lt-full"><b>Volledig logo</b></label>
             </div>
-            <p class="hint">A, C en D: rechtsonder op 108px, zoals op alle tien pagina&rsquo;s van het ontwerp. B: groot gecentreerd.</p>
+            <p class="hint">Rechtsonder op 108px in elk template, zoals op alle tien pagina&rsquo;s van het ontwerp. Staat het watermerk aan, dan vervalt dit kleine logo.</p>
           </div>
 
           <!-- Het logo is een inline SVG; de vulkleur wordt door app.js gezet.

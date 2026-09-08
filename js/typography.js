@@ -48,10 +48,10 @@ window.SPEEDSTAR.typo = (function () {
       hint: 'Feestdagen, wensen en speciale dagen. Links uitgelijnd.'
     },
     b: {
-      key: 'b', name: 'Brand Awareness', short: 'Template B',
-      text: false, kicker: null, title: null, intro: null, data: null,
-      logo: 'gecentreerd, 80% breed', overlay: 'egaal',
-      hint: 'Alleen beeld en logo. De tekstvelden blijven bewaard maar worden niet getoond.'
+      key: 'b', name: 'Watermerk & tekst', short: 'Template B',
+      text: true, kicker: 'h3', title: 'h2', titleXl: 'h1', intro: 'intro', data: null,
+      logo: 'rechtsonder, vervalt zodra het watermerk aanstaat', overlay: 'egaal',
+      hint: 'Groot beeldmerk als watermerk, tekst links binnen de marge. Kop 34pt of 48pt.'
     },
     c: {
       key: 'c', name: 'Statement', short: 'Template C',
