@@ -91,12 +91,13 @@
      al op :root ingevuld, en de sterkte die app.js op het canvas zet zou dan
      nooit doorwerken. */
 
-  /* Groot watermerk: beeldmerk 150% van de canvasbreedte, exact gecentreerd.
+  /* Groot watermerk: beeldmerk 169% van de canvasbreedte, exact gecentreerd.
+     Dat is de maat uit het ontwerp (154%) plus de 10% die erbij gevraagd is.
      De tekening vult de viewBox volledig (bbox 0 0 1080 891,02), dus het
      midden van de viewBox is ook het optische midden.
      Hoogte = breedte × 891,02 / 1080. */
-  --watermark-w: 1663;
-  --watermark-h: 1372;
+  --watermark-w: 1829.3;
+  --watermark-h: 1509.2;
   --watermark-opacity: .2;
   /* In het Canva-ontwerp staat het watermerk niet in het midden maar 210px
      naar links en 11px omlaag. Op verzoek staat het hier wél gecentreerd;
