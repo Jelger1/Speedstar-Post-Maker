@@ -186,7 +186,7 @@
   --ring:        0 0 0 3px rgba(48,91,173,.38);
 
   --ff-ui:       'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  --sidebar-w:   380px;
+  --rail-w:      340px;     /* breedte van de twee zijkolommen */
   --ease:        cubic-bezier(.4, 0, .2, 1);
   --t:           .18s var(--ease);
 }
@@ -242,23 +242,42 @@ kbd { border: 1px solid var(--line); box-shadow: 0 1px 0 var(--line); }
 .panels::-webkit-scrollbar-thumb:hover { background: var(--line); }
 .panels::-webkit-scrollbar-track { background: transparent; }
 
-/* --- App-shell --- */
+/* --- App-shell: inhoud links, preview in het midden, ontwerp rechts --- */
 .app {
   display: grid;
-  grid-template-columns: var(--sidebar-w) 1fr;
+  grid-template-columns: var(--rail-w) minmax(0, 1fr) var(--rail-w);
   height: 100vh;
   height: 100dvh;
 }
 
-.sidebar {
+.rail {
   display: flex;
   flex-direction: column;
   min-height: 0;
   background: var(--surface);
-  border-right: 1px solid var(--line-soft);
 }
+.rail--left  { border-right: 1px solid var(--line-soft); }
+.rail--right { border-left:  1px solid var(--line-soft); }
 
-/* --- Kop van de sidebar: Speedstar-beeldmerk --- */
+/* --- Kopje boven elke zijkolom, zodat meteen duidelijk is wat er staat --- */
+.railhead {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: none;
+  padding: 15px 20px 13px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.railhead__title {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--color-accent-lightblue);
+}
+.railhead__sub { font-size: 12px; color: var(--text-mute); }
+
+/* --- Kop van de linkerkolom: Speedstar-beeldmerk --- */
 .brandbar {
   display: flex;
   align-items: center;
@@ -314,8 +333,8 @@ kbd { border: 1px solid var(--line); box-shadow: 0 1px 0 var(--line); }
 .panel__body {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 4px 20px 22px;
+  gap: 18px;
+  padding: 4px 20px 24px;
   animation: slide-in .22s var(--ease);
 }
 @keyframes slide-in { from { opacity: 0; transform: translateY(-4px); } }
@@ -766,6 +785,22 @@ input[type="range"]::-moz-range-thumb { width: 13px; height: 13px; border-radius
 .stage__drophint b { font-size: 15px; }
 .stage__drophint span { font-size: 12px; color: var(--text-dim); }
 
+/* --- Actiebalk onder de preview: downloaden waar je de post ziet --- */
+.actionbar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 26px;
+  border-top: 1px solid var(--line-soft);
+  background: var(--surface);
+}
+.actionbar .btn--lg { min-height: 42px; padding: 0 20px; font-size: 14px; }
+.actionbar__opts { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.actionbar__opts .seg { padding: 3px; }
+.actionbar__opts select { width: auto; min-width: 170px; padding-block: 8px; font-size: 12.5px; }
+.actionbar__reset { flex: none; }
+
 /* --- Statusbalk --- */
 .statusbar {
   display: flex;
@@ -849,7 +884,8 @@ input[type="range"]::-moz-range-thumb { width: 13px; height: 13px; border-radius
   font-weight: var(--font-weight-regular);
   -webkit-font-smoothing: antialiased;
 }
-.post-canvas.ink-dark { --ink: var(--color-text-dark); }
+/* --ink en --accent-ink worden door app.js gezet vanuit de kleurkeuzes in
+   de zijkolom; beide komen uit het merkpalet. */
 
 /* --- Laag 0: foto (cover, uitsnede via app.js) --- */
 .pc-image {
@@ -960,14 +996,13 @@ input[type="range"]::-moz-range-thumb { width: 13px; height: 13px; border-radius
 .pc-flow h2 + p,  .pc-flow h1 + p  { margin-top: calc(5 * var(--pt)); }
 .pc-flow p + p                     { margin-top: calc(6 * var(--pt)); }
 
-/* Accenten: Bold Italic, kleur overgeërfd (§2); optioneel lichtblauw zoals
-   in de voorbeeldposts (.accent-lightblue) */
+/* Accenten: Bold Italic in een eigen merkkleur. --accent-ink is 'inherit'
+   wanneer de accentwoorden dezelfde kleur als de rest moeten krijgen. */
 .pc-flow strong, .pc-flow em, .ss-accent {
   font-weight: var(--font-weight-bold);
   font-style: italic;
+  color: var(--accent-ink, inherit);
 }
-.post-canvas.accent-lightblue .pc-flow em,
-.post-canvas.accent-lightblue .ss-accent { color: var(--color-accent-lightblue); }
 
 /* Lege velden nemen geen ruimte in */
 .pc-flow > :empty { display: none; }
@@ -1103,10 +1138,29 @@ input[type="range"]::-moz-range-thumb { width: 13px; height: 13px; border-radius
 /* =============================================================================
    8. RESPONSIVE
    ============================================================================= */
-@media (max-width: 1080px) {
-  :root { --sidebar-w: 330px; }
+/* Krap voor drie kolommen: smallere zijkolommen en minder witruimte */
+@media (max-width: 1440px) {
+  :root { --rail-w: 300px; }
   .stage { padding: 18px; }
-  .topbar, .statusbar { padding-inline: 18px; }
+  .topbar, .statusbar, .actionbar { padding-inline: 18px; }
+  .actionbar__opts select { min-width: 132px; }
+}
+
+/* Nog krapper: de drie kolommen blijven staan, de zijkolommen worden smaller
+   zodat de preview in het midden zo groot mogelijk blijft. */
+@media (max-width: 1180px) {
+  :root { --rail-w: 268px; }
+  .stage { padding: 14px; }
+  .topbar, .statusbar, .actionbar { padding-inline: 14px; }
+  .actionbar { flex-wrap: wrap; }
+  .actionbar__opts { margin-left: 0; }
+  .panel__head { padding: 13px 16px; }
+  .panel__body { padding: 4px 16px 20px; gap: 15px; }
+  .railhead, .brandbar { padding-inline: 16px; }
+  /* De templatekaarten naast elkaar worden te smal voor hun omschrijving */
+  .tpls { grid-template-columns: 1fr; }
+  /* Alleen het hoogstnodige in de statusbalk */
+  .statusbar__wide { display: none; }
 }
 
 /* Desktop: mobiele elementen bestaan wel, maar zijn onzichtbaar */
@@ -1114,7 +1168,9 @@ input[type="range"]::-moz-range-thumb { width: 13px; height: 13px; border-radius
 
 @media (max-width: 860px) {
   body { overflow: auto; -webkit-text-size-adjust: 100%; }
-  .app { grid-template-columns: 1fr; height: auto; min-height: 100dvh; }
+  .app { grid-template-columns: 1fr; grid-template-rows: none; height: auto; min-height: 100dvh; }
+  .rail--left, .rail--right { grid-column: auto; grid-row: auto; max-height: none; }
+  .railhead { display: none; }
 
   /* --- Preview bovenin, blijft staan tijdens scrollen --- */
   .workspace {
@@ -1124,7 +1180,7 @@ input[type="range"]::-moz-range-thumb { width: 13px; height: 13px; border-radius
     border-bottom: 1px solid var(--line-soft);
     box-shadow: 0 10px 30px -18px rgba(0,0,0,.9);
   }
-  .topbar, .statusbar, .stage__drophint, .hint--desktop { display: none; }
+  .topbar, .statusbar, .stage__drophint, .hint--desktop, .actionbar { display: none; }
   .notice { margin: 8px 12px 0; padding: 9px 11px; font-size: 12px; }
 
   .stage { flex: none; height: 40vh; height: 40dvh; min-height: 220px; padding: 10px 12px 8px; transition: height .22s var(--ease); }
@@ -1158,7 +1214,8 @@ input[type="range"]::-moz-range-thumb { width: 13px; height: 13px; border-radius
   .mobile-nav button.is-active { background: var(--brand); border-color: var(--brand); color: #fff; }
 
   /* --- Bediening --- */
-  .sidebar { border-right: none; padding-bottom: calc(84px + env(safe-area-inset-bottom)); }
+  .rail { border-right: none; border-left: none; }
+  .rail--right { border-top: 1px solid var(--line-soft); padding-bottom: calc(84px + env(safe-area-inset-bottom)); }
   .panels { overflow: visible; }
   .panel__head { padding: 15px 16px; }
   .panel__body { padding: 2px 16px 20px; gap: 14px; }

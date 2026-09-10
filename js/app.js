@@ -51,6 +51,24 @@
   };
   function bgColor() { return (BACKGROUNDS[state.bgColor] || BACKGROUNDS.navy).color; }
 
+  /* Tekstkleur en de kleur van de accentwoorden, allebei uit het merkpalet.
+     'same' laat de accentwoorden de gewone tekstkleur erven. */
+  var TEXT_COLORS = {
+    'white':     { color: '#ffffff', label: 'wit' },
+    'navy':      { color: '#221f5e', label: 'navy' },
+    'blue':      { color: '#305bad', label: 'blauw' },
+    'lightblue': { color: '#96bed6', label: 'lichtblauw' },
+    'ice':       { color: '#ccdbdb', label: 'ijsblauw' }
+  };
+  var ACCENT_COLORS = {
+    'lightblue': '#96bed6',
+    'white':     '#ffffff',
+    'ice':       '#ccdbdb',
+    'same':      'inherit'
+  };
+  function inkColor()    { return (TEXT_COLORS[state.textColor] || TEXT_COLORS.white).color; }
+  function accentInk()   { return ACCENT_COLORS[state.accentColor] || 'inherit'; }
+
   /* Template B is het watermerk-template: bij het kiezen ervan gaat het
      watermerk aan op 45% (pagina 9 van het ontwerp). */
   var TEMPLATE_B_WATERMARK = 45;
@@ -72,7 +90,7 @@
     overlay: 40, zoom: 100, focus: 'center', gradient: 'none', gradientStrength: 100,
     bgColor: 'navy',
     kicker: '', title: '', intro: '', data: '', accents: '',
-    headSize: 'h2', ink: 'light', autoFit: true, accentLightblue: true,
+    headSize: 'h2', autoFit: true, textColor: 'white', accentColor: 'lightblue',
     textPos: 'top', textAlign: 'left',
     logoType: 'mark', logoVariant: 'auto', plate: 'none', dataColor: 'ice',
     watermark: false, watermarkOpacity: 20,
@@ -274,10 +292,8 @@
       'post-canvas',
       state.image ? 'has-image' : '',
       TYPO.wordCount(fields(), state.template) ? 'has-text' : '',
-      state.ink === 'dark' ? 'ink-dark' : '',
       'tpos-' + state.textPos,
       'talign-' + state.textAlign,
-      state.accentLightblue ? 'accent-lightblue' : '',
       GRADIENTS[state.gradient] ? 'gradient-' + state.gradient : '',
       state.watermark ? 'watermark-on' : '',
       state.logoType === 'full' ? 'logo-full' : 'logo-mark',
@@ -290,6 +306,8 @@
     c.style.setProperty('--wm', (state.watermarkOpacity / 100).toFixed(3));
     c.style.setProperty('--grad-s', (state.gradientStrength / 100).toFixed(3));
     c.style.setProperty('--canvas-bg', bgColor());
+    c.style.setProperty('--ink', inkColor());
+    c.style.setProperty('--accent-ink', accentInk());
 
     renderLogo();
     renderWatermark();
@@ -334,7 +352,8 @@
     setRadio('template', state.template);
     setRadio('focus', state.focus);
     setRadio('headSize', state.headSize);
-    setRadio('ink', state.ink);
+    setRadio('textColor', state.textColor);
+    setRadio('accentColor', state.accentColor);
     setRadio('textPos', state.textPos);
     setRadio('textAlign', state.textAlign);
     setRadio('gradient', state.gradient);
@@ -353,7 +372,6 @@
     Object.keys(fieldEls).forEach(function (k) { setVal(fieldEls[k], state[k]); });
 
     setChecked($('autoFit'), state.autoFit);
-    setChecked($('accentLightblue'), state.accentLightblue);
     setChecked($('watermark'), state.watermark);
 
     setText($('overlayVal'), state.overlay + '%');
@@ -993,7 +1011,8 @@
       btn.dataset.panel = title;
       var icon = panel.querySelector('.panel__head .ico');
       if (icon) btn.appendChild(icon.cloneNode(true));
-      btn.appendChild(document.createTextNode(title.replace('Logo & watermerk', 'Logo').replace('AI-assistent', 'AI')));
+      var kort = { 'Laat de AI schrijven': 'AI', 'Logo & watermerk': 'Logo', 'Tekstopmaak': 'Opmaak' };
+      btn.appendChild(document.createTextNode(kort[title] || title));
       btn.addEventListener('click', function () { openPanel(panel, true); });
       el.mobileNav.appendChild(btn);
       panel.addEventListener('toggle', updateMobileNav);
@@ -1091,7 +1110,8 @@
     bindRadio('template', 'template', setTemplate);
     bindRadio('focus', 'focus');
     bindRadio('headSize', 'headSize');
-    bindRadio('ink', 'ink');
+    bindRadio('textColor', 'textColor');
+    bindRadio('accentColor', 'accentColor');
     bindRadio('textPos', 'textPos');
     bindRadio('textAlign', 'textAlign');
     bindRadio('gradient', 'gradient');
@@ -1108,7 +1128,6 @@
     bindRange('watermarkOpacity', 'watermarkOpacity');
 
     bindCheck('autoFit', 'autoFit');
-    bindCheck('accentLightblue', 'accentLightblue');
     bindCheck('watermark', 'watermark');
 
     /* Tekstvelden -> state */
@@ -1403,7 +1422,8 @@
     if (['none', 'navy', 'blue'].indexOf(state.plate) === -1) state.plate = DEFAULTS.plate;
     if (['ice', 'ink', 'orange'].indexOf(state.dataColor) === -1) state.dataColor = DEFAULTS.dataColor;
     if (['h1', 'h2'].indexOf(state.headSize) === -1) state.headSize = DEFAULTS.headSize;
-    if (['light', 'dark'].indexOf(state.ink) === -1) state.ink = DEFAULTS.ink;
+    if (!TEXT_COLORS[state.textColor]) state.textColor = DEFAULTS.textColor;
+    if (!ACCENT_COLORS[state.accentColor]) state.accentColor = DEFAULTS.accentColor;
     if (['top', 'middle', 'bottom'].indexOf(state.textPos) === -1) state.textPos = DEFAULTS.textPos;
     if (['left', 'center'].indexOf(state.textAlign) === -1) state.textAlign = DEFAULTS.textAlign;
     if (['top', 'center', 'bottom'].indexOf(state.focus) === -1) state.focus = DEFAULTS.focus;
