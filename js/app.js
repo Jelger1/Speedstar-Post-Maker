@@ -1149,6 +1149,7 @@
     bindDrop(el.imageDrop, el.imageInput, useUploadedImage);
     on(el.imageRemove, 'click', clearImage);
     on(el.envNoticeClose, 'click', hideEnvNotice);
+    on($('libDetach'), 'click', libDetach);
 
     /* AI-assistent */
     on(el.aiGenerate, 'click', function () { aiRequest('generate'); });
@@ -1162,6 +1163,8 @@
     on($('resetBtn'), 'click', function () {
       if (!window.confirm('Tekst, foto en instellingen wissen?')) return;
       state = Object.assign({}, DEFAULTS);
+      currentProjectId = null;
+      libRender();
       clearImage();
       el.statusLine.textContent = DEFAULT_STATUS;
       scheduleRender();
@@ -1215,7 +1218,11 @@
   function stamp() {
     var d = new Date();
     function p(n) { return (n < 10 ? '0' : '') + n; }
-    return d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + '-' + p(d.getHours()) + p(d.getMinutes());
+    /* Seconden erbij: twee downloads binnen dezelfde minuut kregen anders
+       dezelfde bestandsnaam, en dat gebeurt zodra je een opgeslagen post
+       bijwerkt. */
+    return d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + '-' +
+           p(d.getHours()) + p(d.getMinutes()) + p(d.getSeconds());
   }
 
   function exportName(ext) {
@@ -1372,7 +1379,8 @@
 
     setBusy(true);
 
-    var blobPromise = renderToCanvas(mime).then(function (canvas) {
+    var canvasPromise = renderToCanvas(mime);
+    var blobPromise = canvasPromise.then(function (canvas) {
       return canvasToBlob(canvas, mime, 0.94);
     });
 
@@ -1383,6 +1391,10 @@
       : blobPromise.then(function (blob) {
           var name = downloadBlob(blob, ext);
           toast('Opgeslagen als ' + name + (logoLost ? ' — let op: het logo ontbreekt (file://).' : ''), logoLost ? 'warn' : 'ok');
+          /* Elke download komt ook in de bibliotheek te staan */
+          return canvasPromise.then(libSave).catch(function () {
+            toast('De post is gedownload, maar paste niet meer in de bibliotheek. Verwijder er een paar.', 'warn', 7000);
+          });
         });
 
     done
@@ -1391,7 +1403,170 @@
   }
 
   /* ===========================================================================
-     10. OPSLAG & START
+     10. BIBLIOTHEEK - elke download komt hier te staan
+     -----------------------------------------------------------------------
+     De lijst met miniaturen staat als een record onder 'library' in IndexedDB;
+     de post zelf (alle instellingen plus de foto) onder 'proj:<id>'. Zo blijft
+     het openen van het paneel licht, ook bij foto's van een paar megabyte.
+     Openen zet currentProjectId; de volgende download werkt die post bij in
+     plaats van een nieuwe aan te maken.
+     ========================================================================= */
+  var LIB_INDEX = 'library';
+  var library = [];
+  var currentProjectId = null;
+
+  function libKey(id) { return 'proj:' + id; }
+  function newProjectId() { return 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+
+  /* De naam volgt de kop; zonder tekst valt hij terug op de datum. */
+  function projectName() {
+    var t = String(state.title || state.kicker || state.intro || state.data || '').replace(/\s+/g, ' ').trim();
+    if (!t) return 'Post van ' + new Date().toLocaleDateString('nl-NL');
+    return t.length > 46 ? t.slice(0, 45) + '\u2026' : t;
+  }
+
+  /* Miniatuur uit het geexporteerde canvas: klein genoeg om er tientallen van
+     in de index te bewaren. */
+  function makeThumb(canvas) {
+    var w = 260, h = Math.round(w * CANVAS.h / CANVAS.w);
+    var c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    var ctx = c.getContext('2d');
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(canvas, 0, 0, canvas.width, canvas.height, 0, 0, w, h);
+    return c.toDataURL('image/jpeg', 0.82);
+  }
+
+  function libIndexOf(id) {
+    for (var i = 0; i < library.length; i++) if (library[i].id === id) return i;
+    return -1;
+  }
+
+  function libLoad() {
+    return DB.get(LIB_INDEX).then(function (list) {
+      library = Array.isArray(list) ? list : [];
+      libRender();
+    }).catch(noop);
+  }
+
+  function libSave(canvas) {
+    var id = currentProjectId || newProjectId();
+    var settings = {};
+    Object.keys(DEFAULTS).forEach(function (k) { settings[k] = state[k]; });
+    settings.image = null;
+    settings.imageRatio = null;
+
+    var record = { id: id, settings: settings, image: state.image,
+                   imageName: state.imageName, imageRatio: state.imageRatio };
+    var meta = { id: id, name: projectName(), template: state.template,
+                 updatedAt: Date.now(), thumb: makeThumb(canvas) };
+
+    var wasLeeg = library.length === 0;
+    return DB.set(libKey(id), record).then(function () {
+      var i = libIndexOf(id);
+      if (i >= 0) library.splice(i, 1);
+      library.unshift(meta);
+      return DB.set(LIB_INDEX, library);
+    }).then(function () {
+      currentProjectId = id;
+      libRender();
+      /* Bij de allereerste opgeslagen post het paneel één keer openklappen,
+         zodat duidelijk is waar de download terechtkomt. */
+      if (wasLeeg && $('libraryPanel')) $('libraryPanel').open = true;
+    });
+  }
+
+  function libOpen(id) {
+    DB.get(libKey(id)).then(function (rec) {
+      if (!rec || !rec.settings) { toast('Deze post staat niet meer in de bibliotheek.', 'error'); return; }
+      state = Object.assign({}, DEFAULTS, rec.settings);
+      validateState();
+      state.image = rec.image || null;
+      state.imageName = rec.imageName || '';
+      state.imageRatio = rec.imageRatio || null;
+      currentProjectId = id;
+      showImageCard(0);
+      if (state.image) DB.set('image', { dataUrl: state.image, name: state.imageName, ratio: state.imageRatio, size: 0 }).catch(noop);
+      else DB.del('image').catch(noop);
+      lastFlowHtml = null;
+      flushRender();
+      libRender();
+      toast('Post geopend. Pas hem aan en download opnieuw om hem bij te werken.', 'ok', 6000);
+    }).catch(function () { toast('De post kon niet worden geopend.', 'error'); });
+  }
+
+  function libDelete(id) {
+    var i = libIndexOf(id);
+    var naam = i >= 0 ? library[i].name : 'Deze post';
+    if (!window.confirm('"' + naam + '" uit de bibliotheek verwijderen?')) return;
+    if (i >= 0) library.splice(i, 1);
+    if (currentProjectId === id) currentProjectId = null;
+    DB.del(libKey(id)).catch(noop);
+    DB.set(LIB_INDEX, library).catch(noop);
+    libRender();
+    toast('Uit de bibliotheek verwijderd.', 'ok');
+  }
+
+  /* Losmaken: de volgende download wordt een nieuwe post in plaats van een
+     bijwerking van de post die nu open staat. */
+  function libDetach() {
+    currentProjectId = null;
+    libRender();
+    toast('De volgende download komt er als nieuwe post bij.', 'ok');
+  }
+
+  function libRender() {
+    var list = $('libList');
+    if (!list) return;
+    setText($('libCount'), String(library.length));
+    if ($('libEmpty')) $('libEmpty').hidden = library.length > 0;
+    if ($('libOpenNote')) $('libOpenNote').hidden = !currentProjectId;
+
+    list.innerHTML = '';
+    library.forEach(function (p) {
+      var card = document.createElement('div');
+      card.className = 'lib__card' + (p.id === currentProjectId ? ' is-open' : '');
+
+      var openBtn = document.createElement('button');
+      openBtn.type = 'button';
+      openBtn.className = 'lib__thumb';
+      openBtn.title = 'Openen: ' + p.name;
+      if (p.thumb) {
+        var img = document.createElement('img');
+        img.src = p.thumb;
+        img.alt = '';
+        openBtn.appendChild(img);
+      }
+      openBtn.addEventListener('click', function () { libOpen(p.id); });
+      card.appendChild(openBtn);
+
+      var meta = document.createElement('div');
+      meta.className = 'lib__meta';
+      var naam = document.createElement('b');
+      naam.textContent = p.name;
+      var wanneer = document.createElement('i');
+      var tpl = TYPO.TEMPLATES[p.template];
+      wanneer.textContent = new Date(p.updatedAt).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })
+        + (tpl ? ' \u00b7 ' + tpl.short : '');
+      meta.appendChild(naam);
+      meta.appendChild(wanneer);
+      card.appendChild(meta);
+
+      var del = document.createElement('button');
+      del.type = 'button';
+      del.className = 'lib__del';
+      del.title = 'Verwijderen';
+      del.innerHTML = '<svg class="ico" aria-hidden="true"><use href="#i-trash"/></svg>';
+      del.addEventListener('click', function () { libDelete(p.id); });
+      card.appendChild(del);
+
+      list.appendChild(card);
+    });
+  }
+
+  /* ===========================================================================
+     11. OPSLAG & START
      ========================================================================= */
   var STORAGE_KEY = 'speedstar-post-maker-v1';
   var persistTimer = 0;
@@ -1421,6 +1596,14 @@
     Object.keys(DEFAULTS).forEach(function (k) {
       if (saved[k] !== undefined && saved[k] !== null && typeof saved[k] === typeof DEFAULTS[k]) state[k] = saved[k];
     });
+    validateState();
+    state.image = null;
+    state.imageRatio = null;
+  }
+
+  /* Elke waarde terug binnen de toegestane keuzes; gebruikt bij het herstellen
+     uit localStorage en bij het openen van een post uit de bibliotheek. */
+  function validateState() {
     if (!TYPO.TEMPLATES[state.template]) state.template = DEFAULTS.template;
     if (state.logoVariant !== 'auto' && !LOGOS[state.logoVariant]) state.logoVariant = DEFAULTS.logoVariant;
     if (['mark', 'full'].indexOf(state.logoType) === -1) state.logoType = DEFAULTS.logoType;
@@ -1438,8 +1621,6 @@
     if (['top', 'center', 'bottom'].indexOf(state.focus) === -1) state.focus = DEFAULTS.focus;
     state.overlay = clamp(state.overlay, 0, 90);
     state.zoom = clamp(state.zoom, 100, 180);
-    state.image = null;
-    state.imageRatio = null;
   }
 
   function init() {
@@ -1450,6 +1631,7 @@
     safeRender();
 
     restoreUploadedImage();
+    libLoad();
 
     aiHealth();
 

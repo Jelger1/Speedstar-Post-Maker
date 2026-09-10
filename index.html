@@ -39,6 +39,7 @@
   <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
   <symbol id="i-ai" viewBox="0 0 24 24"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8L12 3Z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8L19 15Z"/></symbol>
   <symbol id="i-swatch" viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></symbol>
+  <symbol id="i-library" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="10" rx="1.5"/><rect x="14" y="3" width="7" height="10" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/><rect x="14" y="16" width="7" height="5" rx="1.5"/></symbol>
 </svg>
 
 <!-- ================================================================
@@ -178,6 +179,26 @@
               <input type="radio" name="focus" id="focus-bottom" value="bottom">
               <label for="focus-bottom"><b>Onder</b></label>
             </div>
+          </div>
+        </div>
+      </details>
+
+      <!-- ---------- Bibliotheek ---------- -->
+      <details class="panel" id="libraryPanel">
+        <summary class="panel__head">
+          <svg class="ico" aria-hidden="true"><use href="#i-library"/></svg>
+          <span class="panel__title">Bibliotheek</span>
+          <span class="badge" id="libCount">0</span>
+          <svg class="ico chev" aria-hidden="true"><use href="#i-chevron"/></svg>
+        </summary>
+        <div class="panel__body">
+          <p class="hint" id="libEmpty">Elke post die je downloadt komt hier te staan. Klik hem later aan om de tekst aan te passen en opnieuw te downloaden.</p>
+
+          <div class="lib" id="libList"></div>
+
+          <div class="libnote" id="libOpenNote" hidden>
+            <span>Je werkt aan een opgeslagen post. De volgende download werkt hem bij.</span>
+            <button class="btn btn--ghost btn--sm" id="libDetach" type="button">Als nieuw opslaan</button>
           </div>
         </div>
       </details>
