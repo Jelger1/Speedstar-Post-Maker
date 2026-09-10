@@ -15,7 +15,11 @@
      draait de tool op Render zelf, dan is dit dezelfde site. -->
 <meta name="ai-endpoint" content="https://speedstar-post-maker.onrender.com">
 <link rel="icon" href="assets/brand/speedstar-mark-white.svg" type="image/svg+xml">
-<link rel="stylesheet" href="css/styles.css">
+<!-- ?v= is het versienummer. GitHub Pages laat de browser alles tien
+     minuten cachen; zonder dit nummer kan een nieuwe index.html met een
+     oude styles.css of app.js worden gecombineerd en werkt de helft niet.
+     Bij elke deploy hier en bij de twee scripts hetzelfde nummer ophogen. -->
+<link rel="stylesheet" href="css/styles.css?v=20260910b">
 </head>
 <body>
 
@@ -194,6 +198,8 @@
         <div class="panel__body">
           <p class="hint" id="libEmpty">Elke post die je downloadt komt hier te staan. Klik hem later aan om de tekst aan te passen en opnieuw te downloaden.</p>
 
+          <p class="hint">De bibliotheek staat in deze browser, op dit webadres. Posts die je op een ander adres of een andere computer maakt zie je hier dus niet.</p>
+
           <div class="lib" id="libList"></div>
 
           <div class="libnote" id="libOpenNote" hidden>
@@ -335,7 +341,7 @@
       <span class="sep"></span>
       <span id="fitInfo">Schaal 100%</span>
       <span class="sep"></span>
-      <span class="statusbar__wide" id="brandInfo">Merkstijl: Speedstar Logistics</span>
+      <span class="statusbar__wide" id="brandInfo">Versie 20260910b</span>
       <span class="sep statusbar__wide"></span>
       <span id="aiInfo">AI: niet verbonden</span>
       <span class="sep statusbar__wide"></span>
@@ -615,7 +621,7 @@
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" defer></script>
 
 <!-- Eigen modules: typografie-/templateregels, dan de app -->
-<script src="js/typography.js" defer></script>
-<script src="js/app.js" defer></script>
+<script src="js/typography.js?v=20260910b" defer></script>
+<script src="js/app.js?v=20260910b" defer></script>
 </body>
 </html>
