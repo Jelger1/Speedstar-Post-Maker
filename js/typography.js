@@ -60,10 +60,12 @@ window.SPEEDSTAR.typo = (function () {
       hint: 'Eén krachtige uitspraak, met merkvorm 1 linksboven en merkvorm 2 rechtsonder. Geen logo.'
     },
     d: {
-      key: 'd', name: 'Data & Infographic', short: 'Template D',
-      text: true, kicker: 'h3', title: 'h2', intro: 'intro', data: 'data',
-      logo: 'linksboven', overlay: 'egaal',
-      hint: 'Feiten en percentages. Data-element gecentreerd, tekst eronder.'
+      key: 'd', name: 'Data & cijfer', short: 'Template D',
+      /* Alleen de hoofdkop en het grote getal; bovenkop en inleiding vallen
+         weg (pagina 10 van het ontwerp). */
+      text: true, kicker: null, title: 'h2', intro: null, data: 'data',
+      logo: 'rechtsonder', overlay: 'egaal',
+      hint: 'Eén kopregel met daaronder een groot getal, verticaal gecentreerd op een merkkleur.'
     }
   };
 

@@ -432,9 +432,18 @@
     var t = TYPO.normTemplate(key);
     if (!t || t === state.template) return;
     state.template = t;
+    /* Elk template zet zijn eigen uitgangspunt; daarna mag de gebruiker alles
+       nog zelf bijstellen. B is het watermerk-template, D zet de tekst in het
+       midden en houdt het logo rechtsonder zichtbaar. */
     if (t === 'b' && !state.watermark) {
       state.watermark = true;
       state.watermarkOpacity = TEMPLATE_B_WATERMARK;
+    }
+    if (t === 'd') {
+      state.watermark = false;
+      state.textPos = 'middle';
+    } else if (t !== 'b') {
+      state.textPos = 'top';
     }
     var spec = TYPO.TEMPLATES[t];
     el.statusLine.textContent = spec.short + ' — ' + spec.hint;
