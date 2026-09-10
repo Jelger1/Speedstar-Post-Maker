@@ -82,6 +82,16 @@
      1-6 van het ontwerp, waar de inleiding in drie korte regels valt. */
   --text-col-a-intro: 440;
 
+  /* Merkvormen in de hoeken (Template C), opgemeten op pagina 8 van het
+     ontwerp: twee vierkanten van 711,6 x 712,3 die grotendeels buiten beeld
+     vallen. Vorm 1 linksboven, vorm 2 rechtsonder; de negatieve waarden zijn
+     het stuk dat buiten het canvas steekt. */
+  --shape-w:    712;
+  --shape-1-x: -212;
+  --shape-1-y: -487;
+  --shape-2-x:  -75;
+  --shape-2-y: -515;
+
   /* Logo op het canvas (breedte in px op 1080; Template B gebruikt 80%) */
   --logo-w: 240;       /* volledig logo (woordmerk) */
   --mark-w: 148.5;     /* beeldmerk (S met ster) — maat uit het Canva-ontwerp */
@@ -934,6 +944,18 @@ input[type="range"]::-moz-range-thumb { width: 13px; height: 13px; border-radius
     rgba(250, 78, 29, 0) 100%);
 }
 
+/* --- Laag 1d: merkvormen in twee hoeken (alleen Template C) --- */
+.pc-shape {
+  position: absolute;
+  z-index: 1;
+  display: none;
+  width: calc(var(--u) * var(--shape-w) * 1px);
+  pointer-events: none;
+}
+.pc-shape img { display: block; width: 100%; height: auto; }
+.pc-shape--1 { left: calc(var(--u) * var(--shape-1-x) * 1px); top: calc(var(--u) * var(--shape-1-y) * 1px); }
+.pc-shape--2 { right: calc(var(--u) * var(--shape-2-x) * 1px); bottom: calc(var(--u) * var(--shape-2-y) * 1px); }
+
 /* --- Laag 1c: groot watermerk — beeldmerk 150% breed, gecentreerd, subtiel ---
    Inline SVG (preview) of PNG (export) met dezelfde maat; opacity via --wm.
    Geen mix-blend-mode: html2canvas kent het niet en de export zou afwijken. */
@@ -1107,11 +1129,12 @@ input[type="range"]::-moz-range-thumb { width: 13px; height: 13px; border-radius
 [data-template="b"] { --fs-title: 34; --fs-h1: 48; }   /* Groot = 48pt in dit template */
 [data-template="b"] .pc-logo { right: var(--safe); bottom: var(--safe); }
 
-/* --- Template C: Krachtige Statements — zware overlay ---
-   Overlay nooit lichter dan .4; accenten Bold Italic. Logo rechtsonder.
-   Positie en uitlijning komen van de .tpos-/.talign-modifiers. */
-[data-template="c"] .pc-overlay { background: rgba(var(--color-brand-navy-rgb), max(var(--ov), .4)); }
-[data-template="c"] .pc-logo { right: var(--safe); bottom: var(--safe); }
+/* --- Template C: Statement met merkvormen in de hoeken ---
+   Zoals pagina 8 van het ontwerp: merkvorm 1 linksboven, merkvorm 2
+   rechtsonder, en géén logo. De tekst ligt eroverheen. Positie en uitlijning
+   komen van de .tpos-/.talign-modifiers, de overlay van de schuif. */
+[data-template="c"] .pc-shape { display: block; }
+[data-template="c"] .pc-logo  { display: none; }
 
 /* --- Template D: Data & Infographics — tekst met het data-element eronder ---
    De styleguide zet het cijfer bóven de tekst en het logo linksboven; pagina 10

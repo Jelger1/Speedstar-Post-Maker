@@ -56,8 +56,8 @@ window.SPEEDSTAR.typo = (function () {
     c: {
       key: 'c', name: 'Statement', short: 'Template C',
       text: true, kicker: 'h3', title: 'h2', titleXl: 'h1', intro: 'intro', data: null,
-      logo: 'rechtsonder', overlay: 'egaal, minimaal 40%',
-      hint: 'Krachtige kernwaarden, gecentreerd. Kop 41pt of 65pt.'
+      logo: 'geen logo; merkvormen in de hoeken', overlay: 'egaal',
+      hint: 'Eén krachtige uitspraak, met merkvorm 1 linksboven en merkvorm 2 rechtsonder. Geen logo.'
     },
     d: {
       key: 'd', name: 'Data & Infographic', short: 'Template D',

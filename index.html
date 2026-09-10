@@ -223,6 +223,7 @@
                gradient-lightblue  merkverloop 135° over de foto
                gradient-blue/-navy
                watermark-on        groot semi-transparant beeldmerk (--wm = opacity)
+             Merkvormen (.pc-shape) staan alleen in Template C, in de hoeken.
                logo-mark/logo-full beeldmerk (S) of volledig logo
                plate-navy /        solide merkkleurvlak achter de inhoud (Template D)
                plate-blue
@@ -238,6 +239,10 @@
 
           <!-- Groot watermerk: app.js plaatst hier het beeldmerk als inline SVG -->
           <div class="pc-watermark" id="pcWatermark" aria-hidden="true"></div>
+
+          <!-- Merkvormen in de hoeken; alleen zichtbaar in Template C -->
+          <div class="pc-shape pc-shape--1" aria-hidden="true"><img src="assets/brand/speedstar-shape-1.png" alt=""></div>
+          <div class="pc-shape pc-shape--2" aria-hidden="true"><img src="assets/brand/speedstar-shape-2.png" alt=""></div>
 
           <!-- Tekstcontainer: inset = de marge van 108px -->
           <div class="pc-content" id="pcContent">
@@ -352,7 +357,7 @@
             <input type="radio" name="template" id="tpl-c" value="c">
             <label for="tpl-c" data-tpl="c">
               <span class="tpls__art"></span>
-              <span class="tpls__txt"><b data-key="C">Statement</b><i>Eén krachtige uitspraak</i></span>
+              <span class="tpls__txt"><b data-key="C">Statement</b><i>Merkvormen in de hoeken, geen logo</i></span>
             </label>
 
             <input type="radio" name="template" id="tpl-d" value="d">
