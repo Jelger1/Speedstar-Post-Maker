@@ -1,6 +1,7 @@
 # Afhankelijkheden en lokale bestanden
 node_modules/
 .history/
+.vscode/
 npm-debug.log*
 
 # Geheimen: alleen .env.example hoort in git
