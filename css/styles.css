@@ -97,6 +97,12 @@
   --star-gap:     12;
   --fs-reviewer:  24;
 
+  /* Template F (certificeringen): lijst met een icoon per regel. */
+  --item-icon:      54;
+  --item-gap:       22;
+  --fs-item-title:  17;
+  --fs-item-text:   13;
+
   /* Logo op het canvas (breedte in px op 1080; Template B gebruikt 80%) */
   --logo-w: 240;       /* volledig logo (woordmerk) */
   --mark-w: 148.5;     /* beeldmerk (S met ster) — maat uit het Canva-ontwerp */
@@ -1218,6 +1224,46 @@ input[type="range"]::-moz-range-thumb { width: 13px; height: 13px; border-radius
 [data-template="c"] .pc-shape { display: block; }
 [data-template="c"] .pc-logo  { display: none; }
 
+
+
+/* --- Template F: certificeringen — kop, inleiding en een lijst met iconen --- */
+[data-template="f"] { --fs-title: 40; }
+
+.pc-items { display: none; }
+[data-template="f"] .pc-items {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--item-gap) * var(--pt));
+  margin-top: calc(26 * var(--pt));
+  text-align: left;
+}
+
+.pc-item { display: flex; align-items: flex-start; gap: calc(18 * var(--pt)); }
+
+.pc-item__icon {
+  display: block;
+  flex: none;
+  width:  calc(var(--u) * var(--fit) * var(--item-icon) * 1px);
+  height: calc(var(--u) * var(--fit) * var(--item-icon) * 1px);
+  color: var(--accent-ink, inherit);
+}
+.pc-item__icon svg { display: block; width: 100%; height: 100%; }
+
+.pc-item__txt { display: flex; flex-direction: column; gap: calc(4 * var(--pt)); min-width: 0; }
+
+.pc-item__title {
+  font-size: calc(var(--fs-item-title) * var(--pt));
+  line-height: 1.2;
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: .03em;
+}
+.pc-item__text {
+  font-size: calc(var(--fs-item-text) * var(--pt));
+  line-height: 1.45;
+  font-style: normal;
+  font-weight: var(--font-weight-regular);
+}
 
 /* --- Template E: Google review — sterren, citaat, naam --- */
 [data-template="e"] { --fs-title: 38; }

@@ -53,7 +53,7 @@ const API_KEY = (process.env.OPENAI_API_KEY || '').trim();
      dataElement (alleen Template D), invalshoek (naam van de variant),
      toelichting (één zin voor de gebruiker)
    ------------------------------------------------------------------------- */
-const TEMPLATES = ['A', 'B', 'C', 'D', 'E'];
+const TEMPLATES = ['A', 'B', 'C', 'D', 'E', 'F'];
 
 function obj(properties) {
   return { type: 'object', properties, required: Object.keys(properties), additionalProperties: false };
@@ -64,8 +64,9 @@ const POST_SCHEMA = obj({
   hoofdkop: { type: 'string', description: 'IN HET NEDERLANDS. De kernboodschap (Heading 2, 42pt): max 6 woorden, geen punt aan het eind. Bij Template B leeg.' },
   body: { type: 'string', description: 'IN HET NEDERLANDS. De uitleg of wens (Inleiding, 14pt): max 2 zinnen, kort en bondig. Bij Template B leeg.' },
   accentWoorden: { type: 'array', items: { type: 'string' }, description: 'IN HET NEDERLANDS: 1 tot 3 woorden of korte zinsdelen die LETTERLIJK in hoofdkop of body voorkomen en Bold Italic worden. Leeg toegestaan.' },
-  aanbevolenTemplate: { type: 'string', enum: TEMPLATES, description: 'A = Event & Wishes, B = Watermerk & tekst, C = Statement met merkvormen, D = Data & cijfer, E = Google review' },
+  aanbevolenTemplate: { type: 'string', enum: TEMPLATES, description: 'A = Event & Wishes, B = Watermerk & tekst, C = Statement met merkvormen, D = Data & cijfer, E = Google review, F = Certificeringen' },
   dataElement: { type: 'string', description: 'Alleen bij Template D: het getal of feit dat groot in beeld komt, max 6 tekens, bijv. "98%" of "24/7". Een eventueel woord erin is Nederlands. Anders leeg.' },
+  onderdelen: { type: 'string', description: 'Alleen bij Template F: de lijst met certificeringen of keurmerken, één per regel in de vorm "Kopje | Korte uitleg". Maximaal 5 regels. Verzin nooit een certificaat dat niet in de briefing staat. Anders leeg.' },
   recensent: { type: 'string', description: 'Alleen bij Template E: de naam van de klant die de recensie gaf, precies zoals die in de briefing staat. Verzin nooit een naam. Anders leeg.' },
   sterren: { type: 'integer', description: 'Alleen bij Template E: het aantal sterren, 1 tot en met 5. Staat er geen beoordeling in de briefing, gebruik dan 5. Anders 0.' },
   invalshoek: { type: 'string', description: 'Naam van deze variant in het Nederlands, max 3 woorden, bijv. "Warm & persoonlijk"' },
@@ -102,6 +103,7 @@ const SYSTEM_PROMPT = `You are the in-house copywriter and art director of Speed
 - A "Event & Wishes": holidays, wishes, special days, anniversaries, thank-you posts. Photo with text left-aligned: bovenkop (date/occasion) → hoofdkop → body. Default choice for greetings.
 - B "Watermerk & tekst": a large brand mark as a watermark over a flat brand colour or a quiet photo, with the text left-aligned against the margin. Roomy and calm. Good for a single statement, an announcement or a brand message that needs no photo. hoofdkop carries the message; bovenkop and body optional.
 - C "Statement": core values and strong one-liners in Dutch ("Gedreven door mensen die vertrouwen leveren"). A photo with a brand shape in the top-left and bottom-right corner and no logo; the text sits left-aligned against the top margin. hoofdkop carries the statement (max 6 words, or up to ~10 if it is the whole post); body optional; accent words matter most here.
+- F "Certificeringen": certificates, quality marks and sustainability initiatives. hoofdkop is the heading ("Kwaliteit, veiligheid en duurzaamheid"), body is one or two sentences of introduction, and onderdelen holds the list, one per line as "Kopje | Korte uitleg" (max 5 lines, the uitleg one short sentence). Only use the certificates that appear in the briefing; never invent one. bovenkop stays empty.
 - E "Google review": a real customer review. Put the review itself in hoofdkop (it is shown between quotation marks, so do not add quotes yourself; one or two sentences is fine, up to ~25 words), the customer name in recensent and the rating in sterren. Only recommend this template when the briefing actually contains a review; never invent a quote, a name or a rating. bovenkop and body stay empty.
 - D "Data & cijfer": facts, percentages, milestones on a flat brand colour. This template shows ONLY hoofdkop and dataElement, vertically centred; bovenkop and body are not displayed, so leave them empty. Put the whole message in hoofdkop (one sentence is fine here, up to ~12 words) and the number in dataElement. Only when the briefing contains a real number.
 
@@ -241,6 +243,9 @@ function sanitizeVariant(v) {
   let body = str(v.body, 400);
   let dataElement = template === 'D' ? str(v.dataElement, 12) : '';
   const recensent = template === 'E' ? str(v.recensent, 60) : '';
+  const onderdelen = template === 'F'
+    ? str(v.onderdelen, 900).split(/\r?\n/).map(r => r.trim()).filter(Boolean).slice(0, 5).join('\n')
+    : '';
   const sterren = template === 'E' ? Math.min(5, Math.max(1, parseInt(v.sterren, 10) || 5)) : 0;
 
   /* Template D toont alleen de hoofdkop en het getal; E alleen de recensie. */
@@ -258,7 +263,7 @@ function sanitizeVariant(v) {
   return {
     bovenkop, hoofdkop, body, accentWoorden,
     aanbevolenTemplate: template,
-    dataElement, recensent, sterren,
+    dataElement, recensent, sterren, onderdelen,
     invalshoek: str(v.invalshoek, 60),
     toelichting: str(v.toelichting, 300)
   };

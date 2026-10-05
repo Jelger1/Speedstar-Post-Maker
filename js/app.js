@@ -91,7 +91,7 @@
     bgColor: 'navy',
     kicker: '', title: '', intro: '', data: '', accents: '',
     headSize: 'h2', autoFit: true, textColor: 'white', accentColor: 'lightblue',
-    reviewer: '', stars: 5,
+    reviewer: '', stars: 5, items: '',
     textPos: 'top', textAlign: 'left',
     logoType: 'mark', logoVariant: 'auto', plate: 'none', dataColor: 'ice',
     watermark: false, watermarkOpacity: 20,
@@ -141,7 +141,7 @@
 
   /* Tekstvelden: id in de sidebar -> sleutel in de state */
   var fieldEls = { kicker: $('fKicker'), title: $('fTitle'), intro: $('fBody'), data: $('fData'),
-                   accents: $('fAccent'), reviewer: $('fReviewer') };
+                   accents: $('fAccent'), reviewer: $('fReviewer'), items: $('fItems') };
 
   var toastTimer;
   function toast(message, kind, ms) {
@@ -323,11 +323,12 @@
       el.pcFlow.innerHTML = html;
       lastFlowHtml = html;
     }
+    if (state.template === 'f') renderItemIcons();
   }
 
   function fields() {
     return { kicker: state.kicker, title: state.title, intro: state.intro, data: state.data,
-             accents: state.accents, reviewer: state.reviewer };
+             accents: state.accents, reviewer: state.reviewer, items: state.items };
   }
 
   /* Tekst krimpt automatisch tot ze binnen de safe-zone past (binaire zoektocht) */
@@ -448,7 +449,7 @@
       }
     } else {
       state.watermark = false;
-      state.textPos = (t === 'd' || t === 'e') ? 'middle' : 'top';
+      state.textPos = (t === 'd' || t === 'e' || t === 'f') ? 'middle' : 'top';
     }
     var spec = TYPO.TEMPLATES[t];
     el.statusLine.textContent = spec.short + ' — ' + spec.hint;
@@ -715,6 +716,26 @@
     img.alt = '';
     img.style.cssText = 'display:block;width:100%;height:auto';
     if (svg.parentNode) svg.parentNode.replaceChild(img, svg);
+  }
+
+  /* Iconen bij de lijst van Template F. Ze staan als losse SVG's in het merk-
+     mapje en worden net als het logo inline gezet, zodat ze de tekstkleur
+     kunnen overnemen en scherp blijven in de export. */
+  function itemIconFile(naam) { return 'assets/brand/icons/' + naam + '.svg'; }
+
+  /* Vult de lege plekjes in de lijst met de bijbehorende tekening. */
+  function renderItemIcons() {
+    var plekken = el.pcFlow.querySelectorAll('.pc-item__icon[data-icon]');
+    Array.prototype.forEach.call(plekken, function (plek) {
+      var naam = plek.getAttribute('data-icon');
+      if (plek.getAttribute('data-mounted') === naam) return;
+      var bestand = itemIconFile(naam);
+      var root = svgDocs[bestand];
+      if (!root) { loadSvg(bestand).then(scheduleRender).catch(noop); return; }
+      plek.innerHTML = '';
+      plek.appendChild(instantiateSvg(root, null, null));
+      plek.setAttribute('data-mounted', naam);
+    });
   }
 
   /* ===========================================================================

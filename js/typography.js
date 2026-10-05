@@ -74,8 +74,20 @@ window.SPEEDSTAR.typo = (function () {
       text: true, kicker: null, title: 'h2', intro: null, data: null, review: true,
       logo: 'rechtsonder', overlay: 'egaal',
       hint: 'Een klantrecensie: sterren, de recensie tussen aanhalingstekens en de naam eronder.'
+    },
+    f: {
+      key: 'f', name: 'Certificeringen', short: 'Template F',
+      /* Kop, inleiding en daaronder een lijst met een icoon, een kopje en een
+         korte uitleg per regel. */
+      text: true, kicker: null, title: 'h2', intro: 'intro', data: null, items: true,
+      logo: 'rechtsonder', overlay: 'egaal',
+      hint: 'Kop en inleiding met daaronder een lijst certificeringen, elk met een icoon.'
     }
   };
+
+  /* De iconen die bij de lijst horen, in de volgorde waarin ze standaard
+     worden toegekend. De bestanden staan in assets/brand/icons. */
+  var ITEM_ICONS = ['gevaar', 'vliegtuig', 'pas', 'vrachtwagen', 'locatie'];
 
   var DEFAULT_TEMPLATE = 'a';
 
@@ -83,7 +95,7 @@ window.SPEEDSTAR.typo = (function () {
     var v = String(value || '').trim().toLowerCase();
     if (TEMPLATES[v]) return v;
     // "Template A", "A", "template-c", "D: Data" -> letter
-    var m = v.match(/\b([abcde])\b/);
+    var m = v.match(/\b([abcdef])\b/);
     return m && TEMPLATES[m[1]] ? m[1] : null;
   }
 
@@ -94,7 +106,8 @@ window.SPEEDSTAR.typo = (function () {
     var o = opts || {};
     var title = t.title;
     if (t.titleXl && o.headSize === 'h1') title = t.titleXl;
-    return { kicker: t.kicker, title: title, intro: t.intro, data: t.data, text: t.text, review: !!t.review };
+    return { kicker: t.kicker, title: title, intro: t.intro, data: t.data, text: t.text,
+             review: !!t.review, items: !!t.items };
   }
 
   /* ---------------------------------------------------------------------------
@@ -182,6 +195,36 @@ window.SPEEDSTAR.typo = (function () {
      zonder extra bestand; de kleur komt via currentColor uit de CSS. */
   var STAR_PATH = 'M12 1.9l3.09 6.26 6.91 1-5 4.87 1.18 6.88L12 17.66l-6.18 3.25L7 14.03l-5-4.87 6.91-1z';
 
+  /* Eén regel per onderdeel: "Kopje | Uitleg | icoon". De uitleg en het icoon
+     zijn optioneel; zonder icoonnaam krijgt elk onderdeel het volgende icoon
+     uit ITEM_ICONS. */
+  function parseItems(text) {
+    var uit = [];
+    String(text || '').split(/\r?\n/).forEach(function (regel, i) {
+      var deel = regel.split('|');
+      var kop = String(deel[0] || '').trim();
+      if (!kop) return;
+      var naam = String(deel[2] || '').trim().toLowerCase();
+      if (ITEM_ICONS.indexOf(naam) === -1) naam = ITEM_ICONS[uit.length % ITEM_ICONS.length];
+      uit.push({ title: kop, text: String(deel[1] || '').trim(), icon: naam });
+    });
+    return uit;
+  }
+
+  function itemsHtml(items) {
+    if (!items.length) return '';
+    var uit = '<div class="pc-items">';
+    items.forEach(function (it) {
+      uit += '<div class="pc-item">' +
+             '<span class="pc-item__icon" data-icon="' + escapeHtml(it.icon) + '" aria-hidden="true"></span>' +
+             '<span class="pc-item__txt">' +
+             '<b class="pc-item__title">' + escapeHtml(it.title) + '</b>' +
+             (it.text ? '<i class="pc-item__text">' + escapeHtml(it.text) + '</i>' : '') +
+             '</span></div>';
+    });
+    return uit + '</div>';
+  }
+
   function starsHtml(count) {
     var n = Math.max(0, Math.min(5, Math.round(Number(count) || 0)));
     var out = '<div class="pc-stars" aria-hidden="true">';
@@ -216,6 +259,15 @@ window.SPEEDSTAR.typo = (function () {
 
     var data = String(f.data || '').trim();
 
+    /* Template F: kop, inleiding en daaronder de lijst met certificeringen. */
+    if (lv.items) {
+      return [
+        lv.title ? element(lv.title, applyAccents(title.text.trim(), accents)) : '',
+        lv.intro ? element(lv.intro, applyAccents(intro.text.trim(), accents)) : '',
+        itemsHtml(parseItems(f.items))
+      ].join('');
+    }
+
     /* Template E: sterren, de recensie tussen aanhalingstekens, dan de naam. */
     if (lv.review) {
       var quote = applyAccents(title.text.trim(), accents);
@@ -244,7 +296,8 @@ window.SPEEDSTAR.typo = (function () {
     if (!lv.text) return 0;
     var f = fields || {};
     return [lv.data ? f.data : '', lv.kicker ? f.kicker : '', lv.title ? f.title : '',
-            lv.intro ? f.intro : '', lv.review ? f.reviewer : '']
+            lv.intro ? f.intro : '', lv.review ? f.reviewer : '',
+            lv.items ? String(f.items || '').split('|').join(' ') : '']
       .join(' ').replace(/\*/g, '').split(/\s+/).filter(Boolean).length;
   }
 
@@ -259,6 +312,8 @@ window.SPEEDSTAR.typo = (function () {
     extractInlineAccents: extractInlineAccents,
     applyAccents: applyAccents,
     buildFlow: buildFlow,
-    wordCount: wordCount
+    wordCount: wordCount,
+    ITEM_ICONS: ITEM_ICONS,
+    parseItems: parseItems
   };
 })();
