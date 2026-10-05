@@ -92,6 +92,11 @@
   --shape-2-x:  -75;
   --shape-2-y: -515;
 
+  /* Template E (recensie): sterren en de naam eronder. */
+  --star-size:    52;
+  --star-gap:     12;
+  --fs-reviewer:  24;
+
   /* Logo op het canvas (breedte in px op 1080; Template B gebruikt 80%) */
   --logo-w: 240;       /* volledig logo (woordmerk) */
   --mark-w: 148.5;     /* beeldmerk (S met ster) — maat uit het Canva-ontwerp */
@@ -1121,6 +1126,11 @@ input[type="range"]::-moz-range-thumb { width: 13px; height: 13px; border-radius
 .pc-logo {
   position: absolute;
   z-index: 3;
+  /* Rechtsonder is de standaard; Template B pint hem met inset op het midden
+     en Template C verbergt hem. Zonder deze twee regels valt een nieuw
+     template terug op linksboven. */
+  right: var(--safe);
+  bottom: var(--safe);
   width: calc(var(--u) * var(--logo-w) * 1px);
 }
 .post-canvas.logo-mark .pc-logo { width: calc(var(--u) * var(--mark-w) * 1px); }
@@ -1207,6 +1217,41 @@ input[type="range"]::-moz-range-thumb { width: 13px; height: 13px; border-radius
    komen van de .tpos-/.talign-modifiers, de overlay van de schuif. */
 [data-template="c"] .pc-shape { display: block; }
 [data-template="c"] .pc-logo  { display: none; }
+
+
+/* --- Template E: Google review — sterren, citaat, naam --- */
+[data-template="e"] { --fs-title: 38; }
+
+.pc-stars { display: none; line-height: 0; }
+[data-template="e"] .pc-stars {
+  display: flex;
+  gap: calc(var(--u) * var(--fit) * var(--star-gap) * 1px);
+  color: var(--accent-ink, inherit);
+}
+.talign-center .pc-stars { justify-content: center; }
+
+.pc-star {
+  display: block;
+  flex: none;
+  width:  calc(var(--u) * var(--fit) * var(--star-size) * 1px);
+  height: calc(var(--u) * var(--fit) * var(--star-size) * 1px);
+}
+.pc-star.is-off { opacity: .26; }
+
+/* Specifieker dan ".pc-flow p", anders wint de maat van de inleiding. */
+.pc-flow p.pc-reviewer {
+  margin: 0;
+  font-size: calc(var(--fs-reviewer) * var(--pt));
+  line-height: var(--lh-heading);
+  font-weight: var(--font-weight-regular);
+  letter-spacing: normal;
+}
+
+/* Ritmiek: sterren -> citaat ruim, citaat -> naam strakker */
+.pc-flow .pc-stars + h1,
+.pc-flow .pc-stars + h2 { margin-top: calc(26 * var(--pt)); }
+.pc-flow h1 + .pc-reviewer,
+.pc-flow h2 + .pc-reviewer { margin-top: calc(20 * var(--pt)); }
 
 /* --- Template D: Data & Infographics — tekst met het data-element eronder ---
    De styleguide zet het cijfer bóven de tekst en het logo linksboven; pagina 10

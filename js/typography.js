@@ -66,6 +66,14 @@ window.SPEEDSTAR.typo = (function () {
       text: true, kicker: null, title: 'h2', intro: null, data: 'data',
       logo: 'rechtsonder', overlay: 'egaal',
       hint: 'Eén kopregel met daaronder een groot getal, verticaal gecentreerd op een merkkleur.'
+    },
+    e: {
+      key: 'e', name: 'Google review', short: 'Template E',
+      /* De recensie staat in het hoofdkop-veld en wordt tussen aanhalings-
+         tekens gezet; daarboven de sterren, daaronder de naam. */
+      text: true, kicker: null, title: 'h2', intro: null, data: null, review: true,
+      logo: 'rechtsonder', overlay: 'egaal',
+      hint: 'Een klantrecensie: sterren, de recensie tussen aanhalingstekens en de naam eronder.'
     }
   };
 
@@ -75,7 +83,7 @@ window.SPEEDSTAR.typo = (function () {
     var v = String(value || '').trim().toLowerCase();
     if (TEMPLATES[v]) return v;
     // "Template A", "A", "template-c", "D: Data" -> letter
-    var m = v.match(/\b([abcd])\b/);
+    var m = v.match(/\b([abcde])\b/);
     return m && TEMPLATES[m[1]] ? m[1] : null;
   }
 
@@ -86,7 +94,7 @@ window.SPEEDSTAR.typo = (function () {
     var o = opts || {};
     var title = t.title;
     if (t.titleXl && o.headSize === 'h1') title = t.titleXl;
-    return { kicker: t.kicker, title: title, intro: t.intro, data: t.data, text: t.text };
+    return { kicker: t.kicker, title: title, intro: t.intro, data: t.data, text: t.text, review: !!t.review };
   }
 
   /* ---------------------------------------------------------------------------
@@ -168,6 +176,23 @@ window.SPEEDSTAR.typo = (function () {
   /* ---------------------------------------------------------------------------
      HTML voor het canvas
      ------------------------------------------------------------------------- */
+
+  /* Sterrenrij voor Template E. Vijf sterren, de eerste `aantal` gevuld, de
+     rest doorzichtig. Het pad staat hier inline zodat de export hem meeneemt
+     zonder extra bestand; de kleur komt via currentColor uit de CSS. */
+  var STAR_PATH = 'M12 1.9l3.09 6.26 6.91 1-5 4.87 1.18 6.88L12 17.66l-6.18 3.25L7 14.03l-5-4.87 6.91-1z';
+
+  function starsHtml(count) {
+    var n = Math.max(0, Math.min(5, Math.round(Number(count) || 0)));
+    var out = '<div class="pc-stars" aria-hidden="true">';
+    for (var i = 1; i <= 5; i++) {
+      out += '<svg class="pc-star' + (i <= n ? '' : ' is-off') + '" viewBox="0 0 24 24" ' +
+             'width="24" height="24" xmlns="http://www.w3.org/2000/svg">' +
+             '<path d="' + STAR_PATH + '" fill="currentColor"/></svg>';
+    }
+    return out + '</div>';
+  }
+
   function element(level, html) {
     var L = LEVELS[level];
     if (!L || !html) return '';
@@ -191,6 +216,17 @@ window.SPEEDSTAR.typo = (function () {
 
     var data = String(f.data || '').trim();
 
+    /* Template E: sterren, de recensie tussen aanhalingstekens, dan de naam. */
+    if (lv.review) {
+      var quote = applyAccents(title.text.trim(), accents);
+      var naam = String(f.reviewer || '').replace(/^[\s\u2013\u2014-]+/, '').replace(/\s+/g, ' ').trim();
+      return [
+        starsHtml(opts && opts.stars !== undefined ? opts.stars : 5),
+        quote ? element(lv.title, '\u201c' + quote + '\u201d') : '',
+        naam ? '<p class="pc-reviewer">\u2014 ' + escapeHtml(naam) + '</p>' : ''
+      ].join('');
+    }
+
     /* Volgorde volgens het Canva-ontwerp (pagina 10): eerst de tekst, dan het
        data-element eronder. De styleguide zet het cijfer eerst; het ontwerp is
        leidend. */
@@ -207,7 +243,8 @@ window.SPEEDSTAR.typo = (function () {
     var lv = levels(template);
     if (!lv.text) return 0;
     var f = fields || {};
-    return [lv.data ? f.data : '', lv.kicker ? f.kicker : '', lv.title ? f.title : '', lv.intro ? f.intro : '']
+    return [lv.data ? f.data : '', lv.kicker ? f.kicker : '', lv.title ? f.title : '',
+            lv.intro ? f.intro : '', lv.review ? f.reviewer : '']
       .join(' ').replace(/\*/g, '').split(/\s+/).filter(Boolean).length;
   }
 

@@ -19,7 +19,7 @@
      minuten cachen; zonder dit nummer kan een nieuwe index.html met een
      oude styles.css of app.js worden gecombineerd en werkt de helft niet.
      Bij elke deploy hier en bij de twee scripts hetzelfde nummer ophogen. -->
-<link rel="stylesheet" href="css/styles.css?v=20260910b">
+<link rel="stylesheet" href="css/styles.css?v=20261005a">
 </head>
 <body>
 
@@ -129,6 +129,26 @@
             <div class="field" data-only="d">
               <label class="label" for="fData">Groot getal <i class="label__opt">alleen Template D</i></label>
               <input type="text" id="fData" placeholder="98%" maxlength="12" autocomplete="off">
+            </div>
+            <div class="field" data-only="e">
+              <label class="label" for="fReviewer">Naam van de klant <i class="label__opt">alleen Template E</i></label>
+              <input type="text" id="fReviewer" placeholder="Jan de Vries" maxlength="60" autocomplete="off">
+              <p class="hint">De recensie zelf typ je hierboven bij <b>Hoofdkop</b>; hij komt vanzelf tussen aanhalingstekens te staan.</p>
+            </div>
+            <div class="field" data-only="e">
+              <span class="label">Sterren</span>
+              <div class="seg seg--5 seg--sm" role="radiogroup" aria-label="Aantal sterren">
+                <input type="radio" name="stars" id="st-1" value="1">
+                <label for="st-1"><b>1</b></label>
+                <input type="radio" name="stars" id="st-2" value="2">
+                <label for="st-2"><b>2</b></label>
+                <input type="radio" name="stars" id="st-3" value="3">
+                <label for="st-3"><b>3</b></label>
+                <input type="radio" name="stars" id="st-4" value="4">
+                <label for="st-4"><b>4</b></label>
+                <input type="radio" name="stars" id="st-5" value="5" checked>
+                <label for="st-5"><b>5</b></label>
+              </div>
             </div>
             <div class="field">
               <label class="label" for="fAccent">Accentwoorden <i class="label__opt">komma-gescheiden</i></label>
@@ -341,7 +361,7 @@
       <span class="sep"></span>
       <span id="fitInfo">Schaal 100%</span>
       <span class="sep"></span>
-      <span class="statusbar__wide" id="brandInfo">Versie 20260910b</span>
+      <span class="statusbar__wide" id="brandInfo">Versie 20261005a</span>
       <span class="sep statusbar__wide"></span>
       <span id="aiInfo">AI: niet verbonden</span>
       <span class="sep statusbar__wide"></span>
@@ -391,6 +411,12 @@
             <label for="tpl-d" data-tpl="d">
               <span class="tpls__art"></span>
               <span class="tpls__txt"><b data-key="D">Data &amp; cijfer</b><i>Kopregel met groot getal</i></span>
+            </label>
+
+            <input type="radio" name="template" id="tpl-e" value="e">
+            <label for="tpl-e" data-tpl="e">
+              <span class="tpls__art"></span>
+              <span class="tpls__txt"><b data-key="E">Google review</b><i>Sterren, citaat en naam</i></span>
             </label>
           </div>
           <p class="hint">Altijd 1080 &times; 1350 (4:5), marge 108px, Allumi Std en de merkkleuren uit het ontwerp.</p>
@@ -621,7 +647,7 @@
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" defer></script>
 
 <!-- Eigen modules: typografie-/templateregels, dan de app -->
-<script src="js/typography.js?v=20260910b" defer></script>
-<script src="js/app.js?v=20260910b" defer></script>
+<script src="js/typography.js?v=20261005a" defer></script>
+<script src="js/app.js?v=20261005a" defer></script>
 </body>
 </html>

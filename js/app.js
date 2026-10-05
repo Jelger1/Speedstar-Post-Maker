@@ -91,6 +91,7 @@
     bgColor: 'navy',
     kicker: '', title: '', intro: '', data: '', accents: '',
     headSize: 'h2', autoFit: true, textColor: 'white', accentColor: 'lightblue',
+    reviewer: '', stars: 5,
     textPos: 'top', textAlign: 'left',
     logoType: 'mark', logoVariant: 'auto', plate: 'none', dataColor: 'ice',
     watermark: false, watermarkOpacity: 20,
@@ -139,7 +140,8 @@
   };
 
   /* Tekstvelden: id in de sidebar -> sleutel in de state */
-  var fieldEls = { kicker: $('fKicker'), title: $('fTitle'), intro: $('fBody'), data: $('fData'), accents: $('fAccent') };
+  var fieldEls = { kicker: $('fKicker'), title: $('fTitle'), intro: $('fBody'), data: $('fData'),
+                   accents: $('fAccent'), reviewer: $('fReviewer') };
 
   var toastTimer;
   function toast(message, kind, ms) {
@@ -316,7 +318,7 @@
   /* Tekst: typography.js bepaalt welk veld in welk niveau (65/41/26/16pt)
      komt en markeert de accentwoorden Bold Italic. */
   function renderText() {
-    var html = TYPO.buildFlow(fields(), state.template, { headSize: state.headSize });
+    var html = TYPO.buildFlow(fields(), state.template, { headSize: state.headSize, stars: state.stars });
     if (html !== lastFlowHtml) {
       el.pcFlow.innerHTML = html;
       lastFlowHtml = html;
@@ -324,7 +326,8 @@
   }
 
   function fields() {
-    return { kicker: state.kicker, title: state.title, intro: state.intro, data: state.data, accents: state.accents };
+    return { kicker: state.kicker, title: state.title, intro: state.intro, data: state.data,
+             accents: state.accents, reviewer: state.reviewer };
   }
 
   /* Tekst krimpt automatisch tot ze binnen de safe-zone past (binaire zoektocht) */
@@ -355,6 +358,7 @@
     setRadio('textColor', state.textColor);
     setRadio('accentColor', state.accentColor);
     setRadio('textPos', state.textPos);
+    setRadio('stars', String(state.stars));
     setRadio('textAlign', state.textAlign);
     setRadio('gradient', state.gradient);
     setRadio('bgColor', state.bgColor);
@@ -433,17 +437,18 @@
     if (!t || t === state.template) return;
     state.template = t;
     /* Elk template zet zijn eigen uitgangspunt; daarna mag de gebruiker alles
-       nog zelf bijstellen. B is het watermerk-template, D zet de tekst in het
-       midden en houdt het logo rechtsonder zichtbaar. */
-    if (t === 'b' && !state.watermark) {
-      state.watermark = true;
-      state.watermarkOpacity = TEMPLATE_B_WATERMARK;
-    }
-    if (t === 'd') {
+       nog zelf bijstellen. Alleen B is het watermerk-template: in de andere
+       vier gaat het watermerk uit, zodat het niet blijft hangen als je van B
+       naar bijvoorbeeld C schakelt en daar over de merkvormen heen valt.
+       D en E zetten de tekst in het midden, de rest bovenaan. */
+    if (t === 'b') {
+      if (!state.watermark) {
+        state.watermark = true;
+        state.watermarkOpacity = TEMPLATE_B_WATERMARK;
+      }
+    } else {
       state.watermark = false;
-      state.textPos = 'middle';
-    } else if (t !== 'b') {
-      state.textPos = 'top';
+      state.textPos = (t === 'd' || t === 'e') ? 'middle' : 'top';
     }
     var spec = TYPO.TEMPLATES[t];
     el.statusLine.textContent = spec.short + ' — ' + spec.hint;
@@ -888,6 +893,8 @@
         name: str(v.name) || ('Voorstel ' + (i + 1)),
         kicker: k.text.trim(), title: t.text.trim(), intro: b.text.trim(),
         data: str(v.data || v.dataElement || v.getal),
+        reviewer: str(v.recensent || v.reviewer),
+        stars: parseInt(v.sterren || v.stars, 10) || 0,
         accents: accents,
         template: tmpl,
         why: str(v.why || v.toelichting)
@@ -921,10 +928,11 @@
       title.textContent = [v.kicker, v.title].filter(Boolean).join('\n');
       card.appendChild(title);
 
-      if (v.intro || v.data) {
+      if (v.intro || v.data || v.reviewer) {
         var body = document.createElement('div');
         body.className = 'ai-card__body';
-        body.textContent = [v.data, v.intro].filter(Boolean).join(' · ');
+        var ster = v.stars ? new Array(v.stars + 1).join('\u2605') : '';
+        body.textContent = [v.data, ster, v.reviewer, v.intro].filter(Boolean).join(' · ');
         card.appendChild(body);
       }
       if (v.accents.length) {
@@ -969,8 +977,12 @@
     state.title = v.title;
     state.intro = v.intro;
     if (v.data) state.data = v.data;
+    if (v.reviewer) state.reviewer = v.reviewer;
+    if (v.stars) state.stars = clamp(v.stars, 1, 5);
     state.accents = v.accents.join(', ');
-    if (!textOnly && v.template) state.template = v.template;
+    /* Via setTemplate, zodat het gekozen template ook zijn eigen uitgangspunt
+       zet (tekstpositie, watermerk) in plaats van alleen de lay-out. */
+    if (!textOnly && v.template) setTemplate(v.template);
     scheduleRender();
 
     Array.prototype.forEach.call(el.aiResults.children, function (card, i) {
@@ -1122,6 +1134,7 @@
     bindRadio('textColor', 'textColor');
     bindRadio('accentColor', 'accentColor');
     bindRadio('textPos', 'textPos');
+    bindRadio('stars', 'stars', function (v) { state.stars = parseInt(v, 10) || 5; scheduleRender(); });
     bindRadio('textAlign', 'textAlign');
     bindRadio('gradient', 'gradient');
     bindRadio('bgColor', 'bgColor');
@@ -1272,7 +1285,7 @@
     if (typeof html2canvas === 'undefined') {
       return 'html2canvas is niet geladen — controleer je internetverbinding en herlaad de pagina.';
     }
-    if (!state.image && !TYPO.buildFlow(fields(), state.template, { headSize: state.headSize })) {
+    if (!state.image && !TYPO.buildFlow(fields(), state.template, { headSize: state.headSize, stars: state.stars })) {
       return 'Er is nog niets om te exporteren: upload een foto of vul tekst in.';
     }
     return null;
@@ -1618,6 +1631,7 @@
     if (!ACCENT_COLORS[state.accentColor]) state.accentColor = DEFAULTS.accentColor;
     if (['top', 'middle', 'bottom'].indexOf(state.textPos) === -1) state.textPos = DEFAULTS.textPos;
     if (['left', 'center'].indexOf(state.textAlign) === -1) state.textAlign = DEFAULTS.textAlign;
+    state.stars = clamp(parseInt(state.stars, 10) || 5, 1, 5);
     if (['top', 'center', 'bottom'].indexOf(state.focus) === -1) state.focus = DEFAULTS.focus;
     state.overlay = clamp(state.overlay, 0, 90);
     state.zoom = clamp(state.zoom, 100, 180);
