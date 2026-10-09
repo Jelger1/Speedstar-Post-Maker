@@ -73,7 +73,7 @@ window.SPEEDSTAR.typo = (function () {
          tekens gezet; daarboven de sterren, daaronder de naam. */
       text: true, kicker: null, title: 'h2', intro: null, data: null, review: true,
       logo: 'rechtsonder', overlay: 'egaal',
-      hint: 'Een klantrecensie: sterren, de recensie tussen aanhalingstekens en de naam eronder.'
+      hint: 'Een klantrecensie als herkenbare reviewkaart: naam, datum, sterren en de tekst.'
     },
     f: {
       key: 'f', name: 'Certificeringen', short: 'Template F',
@@ -225,6 +225,12 @@ window.SPEEDSTAR.typo = (function () {
     return uit + '</div>';
   }
 
+  /* Eerste letter van de naam voor het rondje in de reviewkaart. */
+  function initiaal(naam) {
+    var m = String(naam || '').replace(/^[\s\u2013\u2014-]+/, '').trim();
+    return m ? m.charAt(0).toUpperCase() : '';
+  }
+
   function starsHtml(count) {
     var n = Math.max(0, Math.min(5, Math.round(Number(count) || 0)));
     var out = '<div class="pc-stars" aria-hidden="true">';
@@ -268,12 +274,34 @@ window.SPEEDSTAR.typo = (function () {
       ].join('');
     }
 
-    /* Template E: sterren, de recensie tussen aanhalingstekens, dan de naam. */
+    /* Template E. Twee weergaven: 'kaart' lijkt op een Google-review met een
+       wit blok, rondje met initiaal, naam, datum en gouden sterren; 'open'
+       zet de sterren, de recensie tussen aanhalingstekens en de naam los op
+       de achtergrond. */
     if (lv.review) {
+      var sterren = starsHtml(opts && opts.stars !== undefined ? opts.stars : 5);
       var quote = applyAccents(title.text.trim(), accents);
       var naam = String(f.reviewer || '').replace(/^[\s\u2013\u2014-]+/, '').replace(/\s+/g, ' ').trim();
+      var datum = String(f.date || '').replace(/\s+/g, ' ').trim();
+
+      if (!opts || opts.reviewStyle !== 'open') {
+        var letter = initiaal(naam);
+        return '<div class="pc-card">' +
+          (naam || datum
+            ? '<div class="pc-card__head">' +
+              (letter ? '<span class="pc-card__avatar" aria-hidden="true">' + escapeHtml(letter) + '</span>' : '') +
+              '<span class="pc-card__who">' +
+              (naam ? '<b class="pc-card__name">' + escapeHtml(naam) + '</b>' : '') +
+              (datum ? '<i class="pc-card__date">' + escapeHtml(datum) + '</i>' : '') +
+              '</span></div>'
+            : '') +
+          sterren +
+          (quote ? '<p class="pc-card__text">' + quote + '</p>' : '') +
+          '</div>';
+      }
+
       return [
-        starsHtml(opts && opts.stars !== undefined ? opts.stars : 5),
+        sterren,
         quote ? element(lv.title, '\u201c' + quote + '\u201d') : '',
         naam ? '<p class="pc-reviewer">\u2014 ' + escapeHtml(naam) + '</p>' : ''
       ].join('');
@@ -296,7 +324,7 @@ window.SPEEDSTAR.typo = (function () {
     if (!lv.text) return 0;
     var f = fields || {};
     return [lv.data ? f.data : '', lv.kicker ? f.kicker : '', lv.title ? f.title : '',
-            lv.intro ? f.intro : '', lv.review ? f.reviewer : '',
+            lv.intro ? f.intro : '', lv.review ? f.reviewer : '', lv.review ? f.date : '',
             lv.items ? String(f.items || '').split('|').join(' ') : '']
       .join(' ').replace(/\*/g, '').split(/\s+/).filter(Boolean).length;
   }

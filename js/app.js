@@ -91,7 +91,7 @@
     bgColor: 'navy',
     kicker: '', title: '', intro: '', data: '', accents: '',
     headSize: 'h2', autoFit: true, textColor: 'white', accentColor: 'lightblue',
-    reviewer: '', stars: 5, items: '',
+    reviewer: '', reviewDate: '', reviewStyle: 'card', stars: 5, items: '',
     textPos: 'top', textAlign: 'left',
     logoType: 'mark', logoVariant: 'auto', plate: 'none', dataColor: 'ice',
     watermark: false, watermarkOpacity: 20,
@@ -141,7 +141,7 @@
 
   /* Tekstvelden: id in de sidebar -> sleutel in de state */
   var fieldEls = { kicker: $('fKicker'), title: $('fTitle'), intro: $('fBody'), data: $('fData'),
-                   accents: $('fAccent'), reviewer: $('fReviewer'), items: $('fItems') };
+                   accents: $('fAccent'), reviewer: $('fReviewer'), reviewDate: $('fDate'), items: $('fItems') };
 
   var toastTimer;
   function toast(message, kind, ms) {
@@ -296,6 +296,7 @@
       TYPO.wordCount(fields(), state.template) ? 'has-text' : '',
       'tpos-' + state.textPos,
       'talign-' + state.textAlign,
+      'bg-' + state.bgColor,
       GRADIENTS[state.gradient] ? 'gradient-' + state.gradient : '',
       state.watermark ? 'watermark-on' : '',
       state.logoType === 'full' ? 'logo-full' : 'logo-mark',
@@ -318,7 +319,7 @@
   /* Tekst: typography.js bepaalt welk veld in welk niveau (65/41/26/16pt)
      komt en markeert de accentwoorden Bold Italic. */
   function renderText() {
-    var html = TYPO.buildFlow(fields(), state.template, { headSize: state.headSize, stars: state.stars });
+    var html = TYPO.buildFlow(fields(), state.template, flowOpts());
     if (html !== lastFlowHtml) {
       el.pcFlow.innerHTML = html;
       lastFlowHtml = html;
@@ -328,7 +329,11 @@
 
   function fields() {
     return { kicker: state.kicker, title: state.title, intro: state.intro, data: state.data,
-             accents: state.accents, reviewer: state.reviewer, items: state.items };
+             accents: state.accents, reviewer: state.reviewer, date: state.reviewDate, items: state.items };
+  }
+
+  function flowOpts() {
+    return { headSize: state.headSize, stars: state.stars, reviewStyle: state.reviewStyle };
   }
 
   /* Tekst krimpt automatisch tot ze binnen de safe-zone past (binaire zoektocht) */
@@ -360,6 +365,7 @@
     setRadio('accentColor', state.accentColor);
     setRadio('textPos', state.textPos);
     setRadio('stars', String(state.stars));
+    setRadio('reviewStyle', state.reviewStyle);
     setRadio('textAlign', state.textAlign);
     setRadio('gradient', state.gradient);
     setRadio('bgColor', state.bgColor);
@@ -1156,6 +1162,7 @@
     bindRadio('accentColor', 'accentColor');
     bindRadio('textPos', 'textPos');
     bindRadio('stars', 'stars', function (v) { state.stars = parseInt(v, 10) || 5; scheduleRender(); });
+    bindRadio('reviewStyle', 'reviewStyle');
     bindRadio('textAlign', 'textAlign');
     bindRadio('gradient', 'gradient');
     bindRadio('bgColor', 'bgColor');
@@ -1306,7 +1313,7 @@
     if (typeof html2canvas === 'undefined') {
       return 'html2canvas is niet geladen — controleer je internetverbinding en herlaad de pagina.';
     }
-    if (!state.image && !TYPO.buildFlow(fields(), state.template, { headSize: state.headSize, stars: state.stars })) {
+    if (!state.image && !TYPO.buildFlow(fields(), state.template, flowOpts())) {
       return 'Er is nog niets om te exporteren: upload een foto of vul tekst in.';
     }
     return null;
@@ -1653,6 +1660,8 @@
     if (['top', 'middle', 'bottom'].indexOf(state.textPos) === -1) state.textPos = DEFAULTS.textPos;
     if (['left', 'center'].indexOf(state.textAlign) === -1) state.textAlign = DEFAULTS.textAlign;
     state.stars = clamp(parseInt(state.stars, 10) || 5, 1, 5);
+    if (['card', 'open'].indexOf(state.reviewStyle) === -1) state.reviewStyle = DEFAULTS.reviewStyle;
+    if (typeof state.reviewDate !== 'string') state.reviewDate = '';
     if (['top', 'center', 'bottom'].indexOf(state.focus) === -1) state.focus = DEFAULTS.focus;
     state.overlay = clamp(state.overlay, 0, 90);
     state.zoom = clamp(state.zoom, 100, 180);

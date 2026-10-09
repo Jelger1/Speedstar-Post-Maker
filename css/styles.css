@@ -97,6 +97,18 @@
   --star-gap:     12;
   --fs-reviewer:  24;
 
+  /* Template E, weergave 'kaart': een wit blok zoals een Google-review.
+     Maten in px op het 1080-canvas, lettergroottes in pt. */
+  --card-pad:       60;
+  --card-radius:    28;
+  --card-avatar:    96;
+  --card-star:      40;
+  --card-star-gap:   4;
+  --fs-card-name:   24;
+  --fs-card-date:   16;
+  --fs-card-text:   28;
+  --color-review-star: #fbbc04;
+
   /* Template F (certificeringen): lijst met een icoon per regel. */
   --item-icon:      54;
   --item-gap:       22;
@@ -1298,6 +1310,78 @@ input[type="range"]::-moz-range-thumb { width: 13px; height: 13px; border-radius
 .pc-flow .pc-stars + h2 { margin-top: calc(26 * var(--pt)); }
 .pc-flow h1 + .pc-reviewer,
 .pc-flow h2 + .pc-reviewer { margin-top: calc(20 * var(--pt)); }
+
+/* Reviewkaart: rondje met initiaal, naam en datum, gouden sterren, tekst.
+   De kaart is altijd wit met navy tekst en links uitgelijnd, wat je ook bij
+   Tekstkleur of Uitlijning kiest; zo blijft hij herkenbaar als review.
+   Geen schaduw: html2canvas tekent die niet, dan zou de download afwijken. */
+.pc-card {
+  box-sizing: border-box;
+  width: 100%;
+  padding: calc(var(--u) * var(--fit) * var(--card-pad) * 1px);
+  border-radius: calc(var(--u) * var(--fit) * var(--card-radius) * 1px);
+  background: #ffffff;
+  color: var(--color-brand-navy);
+  text-align: left;
+}
+.bg-white:not(.has-image) .pc-card { background: var(--color-accent-ice); }
+
+.pc-card__head {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * var(--fit) * 24 * 1px);
+}
+.pc-card__avatar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width:  calc(var(--u) * var(--fit) * var(--card-avatar) * 1px);
+  height: calc(var(--u) * var(--fit) * var(--card-avatar) * 1px);
+  border-radius: 50%;
+  background: var(--color-brand-blue);
+  color: #ffffff;
+  font-size: calc(36 * var(--pt));
+  font-weight: var(--font-weight-bold);
+  line-height: 1;
+}
+.pc-card__who { display: flex; flex-direction: column; gap: calc(4 * var(--pt)); min-width: 0; }
+.pc-card__name {
+  font-size: calc(var(--fs-card-name) * var(--pt));
+  line-height: 1.2;
+  font-weight: var(--font-weight-bold);
+}
+.pc-card__date {
+  font-size: calc(var(--fs-card-date) * var(--pt));
+  line-height: 1.2;
+  font-style: normal;
+  font-weight: var(--font-weight-regular);
+  color: rgba(var(--color-brand-navy-rgb), .6);
+}
+
+[data-template="e"] .pc-card .pc-stars {
+  gap: calc(var(--u) * var(--fit) * var(--card-star-gap) * 1px);
+  justify-content: flex-start;
+  color: var(--color-review-star);
+}
+.pc-card .pc-star {
+  width:  calc(var(--u) * var(--fit) * var(--card-star) * 1px);
+  height: calc(var(--u) * var(--fit) * var(--card-star) * 1px);
+}
+.pc-card .pc-star.is-off { color: rgba(var(--color-brand-navy-rgb), .18); opacity: 1; }
+.pc-card__head + .pc-stars { margin-top: calc(var(--u) * var(--fit) * 32 * 1px); }
+
+.pc-flow p.pc-card__text {
+  margin: calc(var(--u) * var(--fit) * 22 * 1px) 0 0;
+  max-width: none;
+  font-size: calc(var(--fs-card-text) * var(--pt));
+  line-height: 1.45;
+  font-weight: var(--font-weight-regular);
+  letter-spacing: normal;
+  color: var(--color-brand-navy);
+}
+/* Lichtblauw is op wit nauwelijks leesbaar; in de kaart wordt het accent blauw. */
+.pc-card .ss-accent { color: var(--color-brand-blue); }
 
 /* --- Template D: Data & Infographics — tekst met het data-element eronder ---
    De styleguide zet het cijfer bóven de tekst en het logo linksboven; pagina 10

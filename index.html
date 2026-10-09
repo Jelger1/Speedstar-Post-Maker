@@ -19,7 +19,7 @@
      minuten cachen; zonder dit nummer kan een nieuwe index.html met een
      oude styles.css of app.js worden gecombineerd en werkt de helft niet.
      Bij elke deploy hier en bij de twee scripts hetzelfde nummer ophogen. -->
-<link rel="stylesheet" href="css/styles.css?v=20261005b">
+<link rel="stylesheet" href="css/styles.css?v=20261006a">
 </head>
 <body>
 
@@ -133,7 +133,11 @@
             <div class="field" data-only="e">
               <label class="label" for="fReviewer">Naam van de klant <i class="label__opt">alleen Template E</i></label>
               <input type="text" id="fReviewer" placeholder="Jan de Vries" maxlength="60" autocomplete="off">
-              <p class="hint">De recensie zelf typ je hierboven bij <b>Hoofdkop</b>; hij komt vanzelf tussen aanhalingstekens te staan.</p>
+              <p class="hint">De recensie zelf typ je hierboven bij <b>Hoofdkop</b>. In de weergave <b>Zonder kaart</b> komt hij vanzelf tussen aanhalingstekens te staan.</p>
+            </div>
+            <div class="field" data-only="e">
+              <label class="label" for="fDate">Wanneer <i class="label__opt">optioneel &middot; staat onder de naam</i></label>
+              <input type="text" id="fDate" placeholder="2 weken geleden" maxlength="40" autocomplete="off">
             </div>
             <div class="field" data-only="e">
               <span class="label">Sterren</span>
@@ -366,7 +370,7 @@
       <span class="sep"></span>
       <span id="fitInfo">Schaal 100%</span>
       <span class="sep"></span>
-      <span class="statusbar__wide" id="brandInfo">Versie 20261005b</span>
+      <span class="statusbar__wide" id="brandInfo">Versie 20261006a</span>
       <span class="sep statusbar__wide"></span>
       <span id="aiInfo">AI: niet verbonden</span>
       <span class="sep statusbar__wide"></span>
@@ -421,7 +425,7 @@
             <input type="radio" name="template" id="tpl-e" value="e">
             <label for="tpl-e" data-tpl="e">
               <span class="tpls__art"></span>
-              <span class="tpls__txt"><b data-key="E">Google review</b><i>Sterren, citaat en naam</i></span>
+              <span class="tpls__txt"><b data-key="E">Google review</b><i>Reviewkaart met sterren</i></span>
             </label>
 
             <input type="radio" name="template" id="tpl-f" value="f">
@@ -505,6 +509,17 @@
           <svg class="ico chev" aria-hidden="true"><use href="#i-chevron"/></svg>
         </summary>
         <div class="panel__body">
+          <div class="field" data-only="e">
+            <span class="label">Weergave review <i class="label__opt">alleen Template E</i></span>
+            <div class="seg seg--2 seg--sm" role="radiogroup" aria-label="Weergave review">
+              <input type="radio" name="reviewStyle" id="rs-card" value="card" checked>
+              <label for="rs-card"><b>Reviewkaart</b></label>
+              <input type="radio" name="reviewStyle" id="rs-open" value="open">
+              <label for="rs-open"><b>Zonder kaart</b></label>
+            </div>
+            <p class="hint">De kaart is altijd wit met donkere tekst en gouden sterren, zoals bij Google. Tekstkleur en uitlijning gelden alleen voor <b>Zonder kaart</b>.</p>
+          </div>
+
           <div class="field">
             <span class="label">Tekstkleur</span>
             <div class="seg seg--5 seg--sm" role="radiogroup" aria-label="Tekstkleur">
@@ -658,7 +673,7 @@
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" defer></script>
 
 <!-- Eigen modules: typografie-/templateregels, dan de app -->
-<script src="js/typography.js?v=20261005b" defer></script>
-<script src="js/app.js?v=20261005b" defer></script>
+<script src="js/typography.js?v=20261006a" defer></script>
+<script src="js/app.js?v=20261006a" defer></script>
 </body>
 </html>
