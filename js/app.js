@@ -1253,8 +1253,16 @@
   /* ===========================================================================
      9. EXPORT
      -----------------------------------------------------------------------
-     html2canvas rendert het canvas met factor (1080 * resolutie) / display-
-     breedte en het resultaat wordt op exact 1080 x 1350 (of 2x) gezet.
+     Twee lagen op één canvas van exact 1080 x 1350 (of 2x):
+     1. De achtergrond (kleur, foto, donkere waas, kleurverloop) tekenen we
+        zelf, op volle resolutie en uit de berekende CSS van de preview.
+        html2canvas tekende die als herhalend patroon op previewformaat:
+        dat gaf naden langs de randen, een zachte foto en een oranje zweem
+        in het transparante eind van het verloop.
+     2. Tekst, logo, iconen en vormen rendert html2canvas daar bovenop, op
+        ware grootte (--u = resolutie) in plaats van de preview op te
+        blazen. De regelafbrekingen van de preview worden vastgezet, zodat
+        de tekst in de download precies zo breekt als op het scherm.
      ========================================================================= */
   function stamp() {
     var d = new Date();
@@ -1319,8 +1327,228 @@
     return null;
   }
 
+  function loadImage(src) {
+    return new Promise(function (resolve, reject) {
+      var img = new Image();
+      img.onload = function () { resolve(img); };
+      img.onerror = function () { reject(new Error('image: foto kon niet worden geladen')); };
+      img.src = src;
+    });
+  }
+
+  /* --- Achtergrond zelf tekenen ------------------------------------------- */
+
+  /* 'rgba(150, 190, 214, 0.2)' of 'rgb(150 190 214 / 20%)' -> [r, g, b, a] */
+  function parseCssColor(str) {
+    var m = /rgba?\(([^)]*)\)/i.exec(String(str || ''));
+    if (!m) return null;
+    var n = m[1].replace(/[,/]/g, ' ').trim().split(/\s+/);
+    if (n.length < 3) return null;
+    var a = n.length > 3 ? (/%$/.test(n[3]) ? parseFloat(n[3]) / 100 : parseFloat(n[3])) : 1;
+    return [parseFloat(n[0]), parseFloat(n[1]), parseFloat(n[2]), isNaN(a) ? 1 : a];
+  }
+
+  /* Splitst op komma's die niet binnen haakjes staan */
+  function splitTop(str) {
+    var out = [], depth = 0, start = 0;
+    for (var i = 0; i < str.length; i++) {
+      var ch = str.charAt(i);
+      if (ch === '(') depth++;
+      else if (ch === ')') depth--;
+      else if (ch === ',' && depth === 0) { out.push(str.slice(start, i).trim()); start = i + 1; }
+    }
+    out.push(str.slice(start).trim());
+    return out;
+  }
+
+  /* Berekende 'linear-gradient(...)' -> { angle, stops: [{ pos, rgba }] }.
+     null bij iets wat we niet kennen; die laag laten we dan aan html2canvas. */
+  var SIDE_ANGLES = { 'to top': 0, 'to right': 90, 'to bottom': 180, 'to left': 270 };
+  function parseLinearGradient(str) {
+    var m = /^linear-gradient\((.*)\)$/i.exec(String(str || '').trim());
+    if (!m) return null;
+    var parts = splitTop(m[1]);
+    var angle = 180, first = parts[0].toLowerCase();
+    if (/^-?[\d.]+deg$/.test(first)) { angle = parseFloat(first); parts.shift(); }
+    else if (/^-?[\d.]+turn$/.test(first)) { angle = parseFloat(first) * 360; parts.shift(); }
+    else if (/^to /.test(first)) {
+      if (!(first in SIDE_ANGLES)) return null;              // hoeken: niet nodig, niet nagebouwd
+      angle = SIDE_ANGLES[first]; parts.shift();
+    }
+    var stops = [];
+    for (var i = 0; i < parts.length; i++) {
+      var sm = /^(rgba?\([^)]*\))\s*(-?[\d.]+%)?$/i.exec(parts[i]);
+      if (!sm) return null;
+      var rgba = parseCssColor(sm[1]);
+      if (!rgba) return null;
+      stops.push({ pos: sm[2] ? parseFloat(sm[2]) / 100 : null, rgba: rgba });
+    }
+    if (stops.length < 2) return null;
+    if (stops[0].pos === null) stops[0].pos = 0;
+    if (stops[stops.length - 1].pos === null) stops[stops.length - 1].pos = 1;
+    for (var k = 1; k < stops.length - 1; k++) {           // ontbrekende posities gelijk verdelen
+      if (stops[k].pos !== null) continue;
+      var j = k; while (stops[j].pos === null) j++;
+      stops[k].pos = stops[k - 1].pos + (stops[j].pos - stops[k - 1].pos) / (j - k + 1);
+    }
+    for (var q = 1; q < stops.length; q++) stops[q].pos = Math.max(stops[q].pos, stops[q - 1].pos);
+    return { angle: angle, stops: stops };
+  }
+
+  function rgbaStr(c, alpha) {
+    return 'rgba(' + Math.round(c[0]) + ',' + Math.round(c[1]) + ',' + Math.round(c[2]) + ',' + alpha + ')';
+  }
+
+  /* Verloop tekenen zoals CSS het doet: hoek 0 = naar boven, met de klok mee;
+     de lijn is zo lang dat 0% en 100% precies door de hoeken gaan. Een
+     volledig transparante stop krijgt de kleur van zijn buren, zodat het
+     verloop vervaagt zonder naar die kleur toe te trekken (CSS mengt
+     'premultiplied'; zo blijft #fa4e1d bij 0% onzichtbaar). */
+  function fillLinearGradient(ctx, W, H, g) {
+    var rad = g.angle * Math.PI / 180;
+    var dx = Math.sin(rad), dy = -Math.cos(rad);
+    var len = Math.abs(W * dx) + Math.abs(H * dy);
+    var cx = W / 2, cy = H / 2;
+    var grad = ctx.createLinearGradient(cx - dx * len / 2, cy - dy * len / 2, cx + dx * len / 2, cy + dy * len / 2);
+    g.stops.forEach(function (st, i) {
+      var pos = Math.min(1, Math.max(0, st.pos));
+      if (st.rgba[3] > 0) { grad.addColorStop(pos, rgbaStr(st.rgba, st.rgba[3])); return; }
+      var prev = g.stops[i - 1], next = g.stops[i + 1];
+      if (prev) grad.addColorStop(pos, rgbaStr(prev.rgba, 0));
+      if (next) grad.addColorStop(pos, rgbaStr(next.rgba, 0));
+      if (!prev && !next) grad.addColorStop(pos, 'rgba(0,0,0,0)');
+    });
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  /* Eén laag (overlay of verloop): achtergrondkleur plus verloop(en).
+     Geeft false als de laag iets bevat wat we niet kunnen nabouwen. */
+  function paintCssLayer(ctx, W, H, layer) {
+    if (!layer) return true;
+    var cs = window.getComputedStyle(layer);
+    if (cs.display === 'none' || cs.visibility === 'hidden') return true;
+    var images = cs.backgroundImage && cs.backgroundImage !== 'none' ? splitTop(cs.backgroundImage) : [];
+    var grads = images.map(parseLinearGradient);
+    if (grads.some(function (g) { return !g; })) return false;
+
+    ctx.save();
+    ctx.globalAlpha = parseFloat(cs.opacity) || 0;
+    var bg = parseCssColor(cs.backgroundColor);
+    if (bg && bg[3] > 0) { ctx.fillStyle = rgbaStr(bg, bg[3]); ctx.fillRect(0, 0, W, H); }
+    for (var i = grads.length - 1; i >= 0; i--) fillLinearGradient(ctx, W, H, grads[i]);   // eerste = bovenste
+    ctx.restore();
+    return true;
+  }
+
+  /* CSS-lengte van background-size/-position naar exportpixels */
+  function cssLen(token, ref, k) {
+    if (/%$/.test(token)) return ref * parseFloat(token) / 100;
+    if (/px$/.test(token)) return parseFloat(token) * k;
+    return null;
+  }
+
+  /* Foto met dezelfde uitsnede als de preview (background-size/-position) */
+  function paintPhoto(ctx, W, H, img, k) {
+    var cs = window.getComputedStyle(el.pcImage);
+    if (cs.display === 'none' || cs.visibility === 'hidden') return;
+    var nw = img.naturalWidth, nh = img.naturalHeight;
+    if (!nw || !nh) return;
+    var size = cs.backgroundSize.split(/\s+/), dw, dh;
+    if (size[0] === 'cover' || size[0] === 'contain') {
+      var f = (size[0] === 'cover' ? Math.max : Math.min)(W / nw, H / nh);
+      dw = nw * f; dh = nh * f;
+    } else {
+      dw = cssLen(size[0], W, k);
+      dh = size[1] ? cssLen(size[1], H, k) : null;
+      if (dw === null && dh === null) { dw = nw * k; dh = nh * k; }
+      else if (dh === null) dh = dw * nh / nw;
+      else if (dw === null) dw = dh * nw / nh;
+    }
+    var pos = cs.backgroundPosition.split(/\s+/);
+    function place(token, free) {
+      if (/%$/.test(token || '')) return free * parseFloat(token) / 100;
+      var px = cssLen(token || '50%', 0, k);
+      return px === null ? free / 2 : px;
+    }
+    ctx.save();
+    ctx.globalAlpha = parseFloat(cs.opacity) || 0;
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(img, place(pos[0], W - dw), place(pos[1], H - dh), dw, dh);
+    ctx.restore();
+  }
+
+  /* --- Regelafbrekingen van de preview vastleggen --------------------------
+     Per tekstknoop in #pcFlow: op welke tekens begint een nieuwe regel. In de
+     kloon komt daar een <br> en mag niets meer zelf afbreken. */
+  function blockOf(node, root) {
+    var n = node.parentNode;
+    while (n && n !== root && window.getComputedStyle(n).display === 'inline') n = n.parentNode;
+    return n || root;
+  }
+
+  function captureLineBreaks(root) {
+    if (!root.getClientRects().length) return null;        // preview niet zichtbaar (mobiel tabblad)
+    var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+    var result = [], lastTop = new Map(), node, index = 0;
+    var range = document.createRange();
+    while ((node = walker.nextNode())) {
+      var text = node.data, breaks = [], block = blockOf(node, root), re = /\S+/g, m;
+      while ((m = re.exec(text))) {
+        range.setStart(node, m.index);
+        range.setEnd(node, m.index + 1);
+        var r = range.getClientRects()[0];
+        if (!r) return null;                                 // geen layout: niets vastzetten
+        var prev = lastTop.get(block);
+        if (prev !== undefined && r.top > prev + Math.max(2, r.height * 0.5)) breaks.push(m.index);
+        lastTop.set(block, r.top);
+      }
+      result.push({ index: index, breaks: breaks });
+      index++;
+    }
+    range.detach && range.detach();
+    return result;
+  }
+
+  function applyLineBreaks(doc, root, captured) {
+    if (!captured || !root) return false;
+    var walker = doc.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+    var nodes = [], node;
+    while ((node = walker.nextNode())) nodes.push(node);
+    if (nodes.length !== captured.length) return false;     // structuur wijkt af: niets forceren
+    captured.forEach(function (c) {
+      var t = nodes[c.index];
+      for (var i = c.breaks.length - 1; i >= 0; i--) {
+        var rest = t.splitText(c.breaks[i]);
+        t.parentNode.insertBefore(doc.createElement('br'), rest);
+      }
+    });
+    var st = doc.createElement('style');
+    st.textContent = '#pcFlow, #pcFlow * { white-space: nowrap !important; }';
+    doc.head.appendChild(st);
+    return true;
+  }
+
+  /* html2canvas zet bij het klonen de berekende stijl van elk SVG-element
+     inline, met de maten van de preview in px en ook de CSS-variabelen
+     (--u = previewschaal). Op ware grootte moeten de sterren en iconen weer
+     meeschalen: variabelen en px-waarden eraf, kleur blijft. */
+  function releaseSvgSizes(root) {
+    Array.prototype.forEach.call(root.querySelectorAll('svg, svg *'), function (n) {
+      var st = n.style;
+      if (!st) return;
+      for (var i = st.length - 1; i >= 0; i--) {
+        var prop = st[i];
+        if (prop.indexOf('--') === 0 || /px/.test(st.getPropertyValue(prop))) st.removeProperty(prop);
+      }
+    });
+  }
+
+  /* --- Export ------------------------------------------------------------- */
   function renderToCanvas(mime) {
     var mult = parseInt(state.exportScale, 10) || 1;
+    var W = CANVAS.w * mult, H = CANVAS.h * mult;
     var fontsReady = (document.fonts && document.fonts.ready) ? document.fonts.ready : Promise.resolve();
 
     /* PNG's van logo en watermerk klaarzetten; mislukt dat (file://), dan
@@ -1328,42 +1556,74 @@
     var logo = logoSpec();
     var wm = state.watermark ? watermarkSpec() : null;
     var rasters = [prepareRaster(logo).catch(noop), wm ? prepareRaster(wm).catch(noop) : Promise.resolve()];
+    var photo = state.image ? loadImage(state.image) : Promise.resolve(null);
 
-    return Promise.all([fontsReady].concat(rasters))
-      .then(function () {
+    return Promise.all([fontsReady, photo].concat(rasters))
+      .then(function (res) {
         flushRender();
-        return settle();
+        return settle().then(function () { return res[1]; });
       })
-      .then(function () {
+      .then(function (img) {
+        var out = document.createElement('canvas');
+        out.width = W;
+        out.height = H;
+        var ctx = out.getContext('2d');
         var box = el.canvas.getBoundingClientRect();
-        var width = box.width || displayW;
-        var scale = (CANVAS.w * mult) / width;
+        var k = W / (box.width || displayW);
 
+        /* Laag 1: achtergrond, foto, waas en verloop */
+        ctx.fillStyle = bgColor();
+        ctx.fillRect(0, 0, W, H);
+        if (img) paintPhoto(ctx, W, H, img, k);
+        var overlay = el.canvas.querySelector('.pc-overlay');
+        var gradient = el.canvas.querySelector('.pc-gradient');
+        var ownOverlay = paintCssLayer(ctx, W, H, overlay);
+        var ownGradient = ownOverlay && paintCssLayer(ctx, W, H, gradient);
+
+        /* Laag 2: de rest, op ware grootte */
+        var breaks = captureLineBreaks(el.pcFlow);
         return html2canvas(el.canvas, {
-          scale: scale,
+          canvas: out,
+          scale: 1,
+          width: W,
+          height: H,
           useCORS: true,
           allowTaint: false,
           logging: false,
           imageTimeout: 20000,
-          backgroundColor: bgColor(),
+          backgroundColor: null,
+          windowWidth: Math.max(window.innerWidth, W + 40),
+          windowHeight: Math.max(window.innerHeight, H + 40),
           onclone: function (doc) {
+            var c = doc.getElementById('postCanvas');
+            doc.body.appendChild(c);                        // los van de app-layout, op (0, 0)
+            c.style.position = 'absolute';
+            c.style.left = '0';
+            c.style.top = '0';
+            c.style.margin = '0';
+            c.style.transform = 'none';
+            c.style.width = W + 'px';
+            c.style.height = H + 'px';
+            c.style.setProperty('--u', String(mult));
+            c.style.background = 'transparent';
+            doc.body.style.margin = '0';
+
+            ['.pc-image', ownOverlay ? '.pc-overlay' : '', ownGradient ? '.pc-gradient' : '']
+              .filter(Boolean).forEach(function (sel) {
+                var n = c.querySelector(sel);
+                if (n) n.style.display = 'none';
+              });
             var empty = doc.getElementById('pcEmpty');
             if (empty) empty.style.display = 'none';
+            releaseSvgSizes(c);
+            applyLineBreaks(doc, doc.getElementById('pcFlow'), breaks);
             swapSvgInClone(doc, 'pcLogoSvg', rasterCache[logo.key]);
             if (wm) swapSvgInClone(doc, 'pcWatermarkSvg', rasterCache[wm.key]);
           }
         });
       })
-      .then(function (raw) {
-        if (!raw || !raw.width || !raw.height) throw new Error('Lege afbeelding');
-        var out = document.createElement('canvas');
-        out.width = CANVAS.w * mult;
-        out.height = CANVAS.h * mult;
-        var ctx = out.getContext('2d');
-        if (mime === 'image/jpeg') { ctx.fillStyle = bgColor(); ctx.fillRect(0, 0, out.width, out.height); }
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = 'high';
-        ctx.drawImage(raw, 0, 0, raw.width, raw.height, 0, 0, out.width, out.height);
+      .then(function (out) {
+        if (!out || !out.width || !out.height) throw new Error('Lege afbeelding');
         return out;
       });
   }
